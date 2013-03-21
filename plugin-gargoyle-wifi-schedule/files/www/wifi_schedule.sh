@@ -10,11 +10,15 @@
 <script>
 <!--
 <?
-	echo "var cron_data = new Array();";
+	echo "var cron_data = new Array();"
 	if [ -e /etc/crontabs/root ] ; then
 		awk '{gsub(/"/, "\\\""); print "cron_data.push(\""$0"\");" }' /etc/crontabs/root
 	fi
-	echo "var current_time=\"`date \"+%Y%m%d-%H%M\"`\";"
+	echo "var weekly_time=\"`date \"+%w-%H-%M\"`\";"
+		
+	echo "var wifi_status = new Array();"
+	iwconfig 2>&1 | grep -v 'wireless' | sed '/^$/d' | awk -F'\n' '{print "wifi_status.push(\""$0"\");" }'
+
 ?>
 
 var raw_cron_data = new Array();
@@ -39,6 +43,21 @@ for (tab_idx in cron_data) {
 </style>
 
 <fieldset id="wifi_schedule">
+	<div id='wlan_stat'>
+		<label class='leftcolumn'>Wireless radio(s) status:</label>
+		<span class='rightcolumn' id='wlan_status'></span>
+	</div>
+	
+	<div id='wifi_action' style="margin-top:15px">
+		<label class='leftcolumn' style="margin-top:5px">Stop/Start wireless radios(s)</label>
+		<span class='rightcolumn'>
+			<input type='button' class='default_button' id='wifi_up_button' value="Start Wireless" onclick='GetWifiUpdate("up")'/>
+			<input type='button' class='default_button' id='wifi_down_button' value="Stop Wireless" onclick='GetWifiUpdate("down")'/>
+		</span>
+	</div>
+
+	<div class="internal_divider"></div>
+
 	<legend class="sectionheader">WiFi Schedule</legend>
 	<select id='timer_mode' onchange='SetTimerMode(this.value)'>
 		<option selected value='0'>Disable timer</option>
@@ -47,7 +66,8 @@ for (tab_idx in cron_data) {
 		<option value='7'>Weekly</option>
 	</select>
 
-	<br/><br/>
+	<br/>
+	<br/>
 
 	<div id="div_timer_increment" style="display:none;">
 		<label>Timer increment:</label>
