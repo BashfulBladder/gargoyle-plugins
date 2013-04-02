@@ -35,7 +35,7 @@ while true; do
 		curr_mac=`grep -e "$amac" "$newSurvey"`
 		
 		if [ -z "$curr_mac" ] ; then
-			if [ $(expr $now - $ats) -lt 450000 ] ; then
+			if [ $(expr $now - $ats) -lt 1850000 ] ; then
 				echo $aline >> "$newSurvey"
 			fi
 		fi

@@ -26,4 +26,5 @@ Display wifi status when wifi is down (to telling when it could go back up). Thi
 
 /* version history
 v1.0 	initial release
+v1.0.1	survey.sh bugfix for 45 days
 */
