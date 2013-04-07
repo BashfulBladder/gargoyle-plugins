@@ -12,10 +12,8 @@ var vdr=new Array();
 
 function MatchOUI(mac) {
 	var devOUI = mac.substr(0,2) + mac.substr(3,2) + mac.substr(6,2);
-	//document.getElementById("note_txt").innerHTML+=("mac" + mac + " Oui: " + devOUI + "-" + vdr[2]+ "<br/>\n");
 	for (var i=0; i < vdr.length; i++) { 
 		if (devOUI.match(vdr[i][0])) { return vdr[i][1]; }
-		//document.getElementById("note_txt").innerHTML+=("mac" + mac + " Oui: " + devOUI + "vdr.test: " + vdr[i][0] + "<br/>\n");
 	}
 	return "unknown"
 }
@@ -27,9 +25,9 @@ function CleanTable(table) {
 	}
 }
 
-function NewTextDiv(strArray, col, width) {
+function NewTextDiv(strArray, col) {
 	var a_div=document.createElement('div')
-	a_div.style.width=width + "px";
+	a_div.style.width='auto';
 	a_div.id="col" + col;
 	a_div.style.textAlign="center"
 	for (var i=0; i < strArray.length; i++) {
@@ -92,7 +90,7 @@ function milliToDHM(msec) {
 
 function LastSeen(time_now, atimestamp) {
 	var diff = Math.abs( strtotime(time_now) - strtotime(atimestamp) );
-	return ( diff < 60000 ? "now" : milliToDHM(diff) );
+	return ( diff < 60000 ? "last seen now" : milliToDHM(diff) );
 }
 
 function Speed(sparr) {
@@ -118,6 +116,26 @@ function Crypt(pass, karr) {
 	return "unknown";
 }
 
+function WarnOUIs(stations) {
+	if (vdr.length == 0 && stations.length > 0) {
+		document.getElementById("oui_txt").innerHTML="  IEEE OUIs were not found. Vendor lookup is disabled.<br/>\n The READ_ME.txt @github explains how to provide a OUIs.js file.<br/>\nOr eventually, a solution will be found to package the data easily.";
+	} else if (vdr.length > 0) {
+		document.getElementById("oui_txt").innerHTML="";
+	}
+	return;
+}
+
+function ShowTracking(num_sta) {
+	var fwidth = document.getElementById('wifi_survey').offsetWidth;
+	//var lpad = window.getComputedStyle(document.getElementsByTagName("tbody")[0], null).getPropertyValue('padding-left');
+	var twidth = document.getElementsByTagName("tbody")[0].offsetWidth;
+	
+	document.getElementById('tracking').innerHTML= "Tracking " + num_sta + " stations";
+	var tspan = document.getElementById('tracking');
+	tspan.style.width = 'auto';
+	tspan.style.width = fwidth - twidth + tspan.offsetWidth + "px";
+}
+
 function FillTable(new_shell_vars, now_time) {
 	var nTime=(now_time == null ? curr_time : now_time);
 	var stations = (new_shell_vars == null ? station_data : new_shell_vars);
@@ -136,12 +154,11 @@ function FillTable(new_shell_vars, now_time) {
 		for (var j=0; j < stations[i].length-10; j++) {
 			crypos.push(stations[i][10+j]);
 		}
-		var col1div=NewTextDiv([stations[i][7], stations[i][0], MatchOUI(stations[i][0])], 1, 155);
-		var col2div=NewTextDiv(["Ch " + stations[i][2] + " - " + stations[i][3] + "GHz", Speed(stations[i][8]), Crypt(stations[i][6], crypos)], 2, 120);
-		var col3div=NewTextDiv([stations[i][9], LastSeen(nTime, stations[i][1]) ], 3, 80);
+		var col1div=NewTextDiv([stations[i][7], stations[i][0], MatchOUI(stations[i][0])], 1);
+		var col2div=NewTextDiv(["Ch " + stations[i][2] + " - " + stations[i][3] + "GHz", Speed(stations[i][8]), Crypt(stations[i][6], crypos)], 2);
+		var col3div=NewTextDiv([stations[i][9], LastSeen(nTime, stations[i][1]) ], 3);
 		var col4div=SignalDiv(stations[i][4], stations[i][5], 100, i);
 		tableData.push([col1div, col2div, col3div, col4div]);
-
 	}
 	
 	var sTable = createTable([""], tableData, "station_table", false, false);
@@ -151,14 +168,14 @@ function FillTable(new_shell_vars, now_time) {
 	if (new_shell_vars == null || new_shell_vars.length == 0) {
 		document.getElementById("note_txt").innerHTML+="<br/>\nUpdating... <br/>\n";
 		UpdateSurvey();
-	};
+	}
+	WarnOUIs(stations);
+	ShowTracking(stations.length);
 }
 
 function InitSurvey() {
+	WarnOUIs(sdata);
 	shellvarsupdater = setInterval("UpdateSurvey(null)", 120000);
-	
-	//document.getElementById("note_txt").innerHTML+="finished loading:" + vdr.length + "<br/>\n";
-
 	FillTable(null);
 }
 
@@ -166,16 +183,13 @@ function UpdateSurvey() {
 	var commands = [];
 	setControlsEnabled(true, false, "Updating station data");
 	commands.push("echo \"var curr_time=\\\"`date \"+%Y%m%d%H%M\"`\\\";\"");
-	commands.push("if [ ! -e \"/tmp/tmp_survey.txt\" ] ; then exec /usr/lib/gargoyle/survey.sh ; fi ;");
+	commands.push("if [ ! -e /tmp/tmp_survey.txt ] ; then /usr/lib/gargoyle/survey.sh ; fi ;");
 	
 	var param = getParameterDefinition("commands", commands.join("\n")) + "&" + getParameterDefinition("hash", document.cookie.replace(/^.*hash=/,"").replace(/[\t ;]+.*$/, ""));
 	
 	var stateChangeFunction = function(req) {
-		//document.getElementById("note_txt").innerHTML+= stateChangeFunction + "<br/>\n";
 		if (req.readyState == 4) {
-			//document.getElementById("note_txt").innerHTML+=req.responseText + "<br/>\n";
 			var shell_output = req.responseText.replace(/Success/, "");
-			//document.getElementById("note_txt").innerHTML+=shell_output + "<br/>\n";
 			eval(shell_output);
 			FillTable(sdata, curr_time);
 			setControlsEnabled(true);

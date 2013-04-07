@@ -43,11 +43,18 @@ for (sd in sdata) {
 
 <fieldset id="wifi_survey">
 	<legend class="sectionheader">WiFi Survey</legend>
-		
+			
+	<div id='caveat'>
+		<label class='nocolumn' id='advisory'>Survey refreshes every 2 minutes</label>
+		<span id='tracking' style="float: right;"></span>
+	</div>	
 	<div>
 		<div id="station_table_container"</div>
 	</div>
 
+	<div id="oui">
+		<span id='oui_txt'></span>
+	</div>
 	<div id="notes">
 		<span id='note_txt'></span>
 	</div>

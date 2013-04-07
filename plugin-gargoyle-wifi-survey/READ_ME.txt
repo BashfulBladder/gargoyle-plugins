@@ -1,18 +1,19 @@
 /*
 TODO:
+¥ there are spurious awk errors (the iwlist awk) that need to be tracked down
+¥ there was an odd sh: 300: bad number error & sh -x /usr/lib/gargoyle/survey.sh didn't pinpoint a problem area
 ¥ tell user how to get missing OUIs.js
 ¥ figure out how to package OUIs.js for install on usb first/ ram if ram > 32? or so?
 
 ENHANCEMENTS:
-Long text fields could use some auto horizontal scrolling
 Display wifi status when wifi is down (to telling when it could go back up). Things not changing for 1/2 hour may cause concern.
 */
 
 /* in this table:
 
-  Data is scraped from stock 'iwlist scan' output & harvested to a javascript array using /usr/lib/gargoyle/survey.sh
-  survey.sh regurgitates data at the end of the run when the webpage tells it to run.
-  iwlist takes some time, so there is a delay from table drawing to updated data. Sorry, asynchronous javascript to blame.
+  Stock 'iw' & 'iwlist' scans have their output scraped. Most data comes fom iwlist - iw provides 802.11n capabilities & speeds.
+  Data is formatted as a javascript array using /usr/lib/gargoyle/survey.sh which echos the data at the end of a run.
+  iwlist & iw scans take some time, so there is a delay from table drawing to updated data. Sorry, asynchronous javascript to blame.
   Quality is represented as the bar on right, color coded for <.333, .333 - .666, >.666
 
   Vendor lookup starts with a 2.8MB file from here: http://standards.ieee.org/develop/regauth/oui/oui.txt
@@ -27,4 +28,5 @@ Display wifi status when wifi is down (to telling when it could go back up). Thi
 /* version history
 v1.0 	initial release
 v1.0.1	survey.sh bugfix for 45 days
+v1.0.2	survey.sh: scrape N speeds from iw; added # stations tracked
 */
