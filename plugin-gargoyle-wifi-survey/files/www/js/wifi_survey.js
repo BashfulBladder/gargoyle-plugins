@@ -7,8 +7,10 @@
  */
 
 var shellvarsupdater = null;
-
 var vdr=new Array();
+var curr_sta = 0;
+window.onkeyup = KeyCaptureU;
+window.onkeydown = KeyCaptureD;
 
 function MatchOUI(mac) {
 	var devOUI = mac.substr(0,2) + mac.substr(3,2) + mac.substr(6,2);
@@ -90,7 +92,8 @@ function milliToDHM(msec) {
 
 function LastSeen(time_now, atimestamp) {
 	var diff = Math.abs( strtotime(time_now) - strtotime(atimestamp) );
-	return ( diff < 60000 ? "last seen now" : milliToDHM(diff) );
+	if (diff < 600000) { curr_sta++; }
+	return ( diff < 300000 ? "last seen now" : milliToDHM(diff) );
 }
 
 function Speed(sparr) {
@@ -109,31 +112,49 @@ function Crypt(pass, karr) {
 	if (pass.match("off")) { return "none"; }
 	if (pass.match("on")) {
 		if (karr.length > 0) {
-			return ( karr[0][0] + " (" + karr[0][1] + "/" + karr[0][2] + ")" );
+			var encr_str = "";
+			for (var i = 0; i < karr.length; i++) {
+				encr_str += karr[i][0] + " (" + karr[i][1] + "/" + karr[i][2] + ")";
+				if (i < karr.length-1) {
+					encr_str += "<br/>\n";
+				}
+			}
+			return encr_str;
+		} else {
+			return "WEP";
 		}
-		return "WEP";
 	}
 	return "unknown";
 }
 
-function WarnOUIs(stations) {
-	if (vdr.length == 0 && stations.length > 0) {
-		document.getElementById("oui_txt").innerHTML="  IEEE OUIs were not found. Vendor lookup is disabled.<br/>\n The READ_ME.txt @github explains how to provide a OUIs.js file.<br/>\nOr eventually, a solution will be found to package the data easily.";
-	} else if (vdr.length > 0) {
-		document.getElementById("oui_txt").innerHTML="";
-	}
-	return;
-}
-
 function ShowTracking(num_sta) {
 	var fwidth = document.getElementById('wifi_survey').offsetWidth;
-	//var lpad = window.getComputedStyle(document.getElementsByTagName("tbody")[0], null).getPropertyValue('padding-left');
 	var twidth = document.getElementsByTagName("tbody")[0].offsetWidth;
-	
-	document.getElementById('tracking').innerHTML= "Tracking " + num_sta + " stations";
 	var tspan = document.getElementById('tracking');
+	
+	tspan.innerHTML= "Tracking " + num_sta + " stations";
 	tspan.style.width = 'auto';
 	tspan.style.width = fwidth - twidth + tspan.offsetWidth + "px";
+}
+
+function ShowCurrentInfo(tspan) {
+	var fwidth = document.getElementById('wifi_survey').offsetWidth;
+	var twidth = document.getElementsByTagName("tbody")[0].offsetWidth;
+	var old_text = tspan.innerHTML;
+	var old_width = tspan.style.width;
+	
+	tspan.innerHTML= curr_sta + " stations seen in last 10 minutes";
+	tspan.style.width = 'auto';
+	tspan.style.width = fwidth - twidth + tspan.offsetWidth + "px";
+	tspan.onmouseout=(function(){ tspan.innerHTML=old_text; tspan.style.width=old_width});
+}
+
+function ShowAdvisory(wifi_interfaces) {
+	if (wifi_interfaces.length == 0) {
+		document.getElementById("advisory").innerHTML="Wireless interfaces are down; check every 2 minutes";
+	} else {
+		document.getElementById("advisory").innerHTML="Survey refreshes every 2 minutes";
+	}
 }
 
 function FillTable(new_shell_vars, now_time) {
@@ -154,9 +175,9 @@ function FillTable(new_shell_vars, now_time) {
 		for (var j=0; j < stations[i].length-10; j++) {
 			crypos.push(stations[i][10+j]);
 		}
-		var col1div=NewTextDiv([stations[i][7], stations[i][0], MatchOUI(stations[i][0])], 1);
-		var col2div=NewTextDiv(["Ch " + stations[i][2] + " - " + stations[i][3] + "GHz", Speed(stations[i][8]), Crypt(stations[i][6], crypos)], 2);
-		var col3div=NewTextDiv([stations[i][9], LastSeen(nTime, stations[i][1]) ], 3);
+		var col1div=NewTextDiv([stations[i][7], stations[i][0], MatchOUI(stations[i][0])], i);
+		var col2div=NewTextDiv(["Ch " + stations[i][2] + " - " + stations[i][3] + "GHz", Speed(stations[i][8]), Crypt(stations[i][6], crypos)], i);
+		var col3div=NewTextDiv([stations[i][9], LastSeen(nTime, stations[i][1]) ], i);
 		var col4div=SignalDiv(stations[i][4], stations[i][5], 100, i);
 		tableData.push([col1div, col2div, col3div, col4div]);
 	}
@@ -176,14 +197,16 @@ function FillTable(new_shell_vars, now_time) {
 function InitSurvey() {
 	WarnOUIs(sdata);
 	shellvarsupdater = setInterval("UpdateSurvey(null)", 120000);
+	ShowAdvisory(wifs);
 	FillTable(null);
 }
 
 function UpdateSurvey() {
 	var commands = [];
 	setControlsEnabled(true, false, "Updating station data");
+	commands.push("echo \"var wifs=\\\"`awk '{gsub(/:/,\\\"\\\"); printf (NR>2 ? $1\\\" \\\" : null)} ' /proc/net/wireless`\\\";\"");
 	commands.push("echo \"var curr_time=\\\"`date \"+%Y%m%d%H%M\"`\\\";\"");
-	commands.push("if [ ! -e /tmp/tmp_survey.txt ] ; then /usr/lib/gargoyle/survey.sh ; fi ;");
+	commands.push("if [ ! -e /tmp/tmp_survey.txt ] ; then /usr/lib/gargoyle/survey.sh ; else cat /tmp/survey_data.txt ; fi");
 	
 	var param = getParameterDefinition("commands", commands.join("\n")) + "&" + getParameterDefinition("hash", document.cookie.replace(/^.*hash=/,"").replace(/[\t ;]+.*$/, ""));
 	
@@ -191,6 +214,8 @@ function UpdateSurvey() {
 		if (req.readyState == 4) {
 			var shell_output = req.responseText.replace(/Success/, "");
 			eval(shell_output);
+			curr_sta=0;
+			ShowAdvisory(wifs);
 			FillTable(sdata, curr_time);
 			setControlsEnabled(true);
 		}
@@ -198,3 +223,134 @@ function UpdateSurvey() {
 	runAjax("POST", "utility/run_commands.sh", param, stateChangeFunction);
 }
 
+//   OUIs support functions
+function WarnOUIs(stations) {
+	if (vdr.length == 0 && stations.length > 0) {
+		document.getElementById("oui_txt").innerHTML="IEEE OUIs were not found. Vendor lookup is disabled.";
+	} else if (vdr.length > 0) {
+		oui_info = document.getElementById("oui_txt");
+		oui_info.innerHTML="IEEE OUIs (vendors) file found " + (oui_src == "RAM" ? "in RAM." : "on USB device.");
+		if (wgetOUI.length > 0) {
+			oui_info.innerHTML+=" Automatically downloads at startup.";
+		} else {
+			oui_info.innerHTML+=" File lost on reboot.";
+		}
+	}
+	
+	if (oui_src.length > 0) {
+		var oui_button = document.getElementById("OUIs_button");
+		oui_button.name="remove";
+		oui_button.value="Remove vendors"
+		document.getElementById("oui_info").innerHTML="Erase vendors/OUIs file. File is 775KB.";
+		document.getElementById("button_info").innerHTML="Removes file in RAM on tmpfs, on USB devices & ends downloading at startup."
+	} else {
+		if (sharepoint.length > 0) {
+			document.getElementById("button_info").innerHTML="Hold down alt/option key to survive restarts. Hold shift down to place file on USB device."
+		} else {
+			document.getElementById("button_info").innerHTML="Hold down alt/option key to survive restarts."
+		}
+	}
+}
+
+function Fill_OUI_Info(button_name) {
+	var oui_info = document.getElementById("oui_info");
+	if (button_name.match(/tmpfs/)) {
+		oui_info.innerHTML="Download vendors/OUIs to RAM ";
+		if (tmp_freespace < 10000) {
+			setElementEnabled(document.getElementById("OUIs_button"), false);
+			document.getElementById("oui_info").innerHTML="Vendors would take too high a percentag eof free RAM";
+		}
+	} else if (button_name.match(/usb/)) {
+		oui_info.innerHTML="Download vendors/OUIs to USB device ";
+		if (share_freespace < 2000) {
+			setElementEnabled(document.getElementById("OUIs_button"), false);
+			document.getElementById("oui_info").innerHTML="Not enough space available on USB device to download vendors";
+		}
+	}
+	
+	if (button_name.match(/rc.local/)) {
+		oui_info.innerHTML+="(+ automatically when router starts)";
+	} else {
+		oui_info.innerHTML+="(lost after reboot)";
+	}
+	oui_info.innerHTML+=". File is 775K.";
+}
+
+function KeyCaptureD(keyEvent) {
+	if (wgetOUI.length > 0) { return }	
+	var oui_button = document.getElementById("OUIs_button");
+	if (oui_button.className.match(/disabled/)) { return }
+	
+	if (keyEvent.altKey) {
+		oui_button.name="tmpfs+rc.local";
+	}
+	if (keyEvent.shiftKey && sharepoint.length > 0) {
+		oui_button.name="usb";
+	}
+	if (keyEvent.shiftKey && keyEvent.altKey && sharepoint.length > 0) {
+		oui_button.name="usb+rc.local";
+	}
+	Fill_OUI_Info(oui_button.name);
+}
+
+function KeyCaptureU(keyEvent) {
+	if (wgetOUI.length > 0) { return }
+	var oui_button = document.getElementById("OUIs_button");
+	if (oui_button.className.match(/disabled/)) { return }
+	
+	if (keyEvent.keyCode == 18) { // alt/option
+		oui_button.name = oui_button.name.split("+")[0];
+	}
+	if (keyEvent.keyCode == 16 && sharepoint.length > 0) { // shift
+		if (oui_button.name.length > 7) {
+			oui_button.name = oui_button.name=="tmpfs+rc.local" ? "usb+rc.local" : "tmpfs+rc.local";
+		} else {
+			oui_button.name = oui_button.name=="tmpfs" ? "usb" : "tmpfs";
+		}
+	} else if (keyEvent.keyCode == 16) {
+		if (oui_button.name.length > 7) {
+			oui_button.name=="tmpfs+rc.local";
+		} else {
+			oui_button.name=="tmpfs";
+		}
+	}
+	Fill_OUI_Info(oui_button.name);
+}
+
+function DoVendorFile(button_name) {
+	var commands = [];
+	if (button_name == "remove") {
+		setControlsEnabled(false, true, "Purging vendors file");
+		commands.push("rm -f /tmp/OUIs.js");
+		if (sharepoint.match(/\/tmp\/usb_mount/)) {
+			commands.push("rm -f " + sharepoint + "/OUIs.js");
+		}
+		commands.push("grep -v -e 'plugin-gargoyle-wifi-survey/OUIs.js' /etc/rc.local > /tmp/rc.local");
+		commands.push("mv /tmp/rc.local /etc/rc.local");
+	} else {
+		setControlsEnabled(false, true, "Downloading vendors file");
+		commands.push("ewget https://raw.github.com/BashfulBladder/gargoyle-plugins/master/plugin-gargoyle-wifi-survey/OUIs.js -O " + 
+						(button_name.split("+")[0] == "usb" ? sharepoint : "/tmp") + "/OUIs.js");
+		if (button_name.split("+").length > 1) {
+			//handle rc.local; even for tmpfs, check if file exists before downloading (only useful for USB)
+			//commands.push("ouiLine=\"if [ ! -e " + (button_name.split("+")[0] == "usb" ? sharepoint : "/tmp") + "/OUIs.js ] ; then ewget https://raw.github.com/BashfulBladder/gargoyle-plugins/master/plugin-gargoyle-wifi-survey/OUIs.js -O " + (button_name.split("+")[0] == "usb" ? sharepoint : "/tmp") + "/OUIs.js ; fi\"");
+			if (button_name == "usb+rc.local") {
+				commands.push("ouiLine=\"if [ ! -e " + sharepoint + "/OUIs.js ] ; then ewget https://raw.github.com/BashfulBladder/gargoyle-plugins/master/plugin-gargoyle-wifi-survey/OUIs.js -O " + sharepoint + "/OUIs.js ; fi\"");
+			} else {
+				commands.push("ouiLine=\"ewget https://raw.github.com/BashfulBladder/gargoyle-plugins/master/plugin-gargoyle-wifi-survey/OUIs.js -O /tmp/OUIs.js\"");
+			}
+			//commands.push("awk -v oui=\"$ouiLine\" '/^exit 0/{print oui}1' /etc/rc.local > /tmp/rc.local");
+			commands.push("grep -v -e 'plugin-gargoyle-wifi-survey/OUIs.js' /etc/rc.local | awk -v oui=\"$ouiLine\" '/^exit 0/{print oui}1' > /tmp/rc.local");
+			commands.push("mv /tmp/rc.local /etc/rc.local");
+		}
+	}
+	var param = getParameterDefinition("commands", commands.join("\n")) + "&" + getParameterDefinition("hash", document.cookie.replace(/^.*hash=/,"").replace(/[\t ;]+.*$/, ""));
+	
+	var stateChangeFunction = function(req) {
+		if (req.readyState == 4) {
+			if (button_name == "remove") { setTimeout(setControlsEnabled(true), 2*1000); }
+			window.location.reload(true); //reloading page solves so many issues
+		}
+	}
+	runAjax("POST", "utility/run_commands.sh", param, stateChangeFunction);
+}

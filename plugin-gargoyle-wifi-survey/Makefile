@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=plugin_gargoyle_wifi_survey
-PKG_VERSION:=1.0.3
+PKG_VERSION:=1.1
 PKG_RELEASE:=1
 
 
@@ -41,14 +41,6 @@ if [ -z "$${IPKG_INSTROOT}" ]; then
 	uci set gargoyle.system.wifi_survey='380'
 	uci commit
 fi
-ouiLine="ewget https://raw.github.com/BashfulBladder/gargoyle-plugins/master/plugin-gargoyle-wifi-survey/OUIs.js -O /tmp/OUIs.js\n"
-
-tmpSpace="$$(df | awk '/tmpfs/ $$2 > max { max=$$2 }; END { print max }')"
-
-if [ $$tmpSpace -gt 10000 ] ; then
-  awk -v oui="$$ouiLine" '/^exit 0/{print oui}1' /etc/rc.local > /tmp/rc.local
-  mv /tmp/rc.local /etc/rc.local
-fi
 endef
 
 define Package/plugin-gargoyle-wifi-survey/postrm
@@ -62,6 +54,19 @@ if [ -z "$${IPKG_INSTROOT}" ]; then
 fi
 grep -v -e "plugin-gargoyle-wifi-survey/OUIs.js" /etc/rc.local > /tmp/rc.local
 mv /tmp/rc.local /etc/rc.local
+
+#its jacked up, but delete OUIs.js from each mounted partition
+mnt=1
+while true; do
+  apart=$$(awk -v mnt=$$mnt 'NR==mnt {print $$3}' /tmp/mounted_usb_storage.tab)
+  if [ -z $$apart ] ; then
+    break
+  fi
+  if [ -e $$apart/OUIs.js ] ; then
+    rm -f $$apart/OUIs.js
+  fi
+  let mnt++
+done
 endef
 
 define Package/plugin-gargoyle-wifi-survey/install

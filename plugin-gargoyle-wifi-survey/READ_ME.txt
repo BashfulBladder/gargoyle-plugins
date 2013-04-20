@@ -1,10 +1,9 @@
 /*
 TODO:
-¥ there are spurious awk errors (the iwlist awk) that need to be tracked down (none with new survey.sh)
 ¥ there was an odd sh: 300: bad number error & sh -x /usr/lib/gargoyle/survey.sh didn't pinpoint a problem area (only happend once)
 
 ENHANCEMENTS:
-Display wifi status when wifi is down (to telling when it could go back up). Things not changing for 1/2 hour may cause concern.
+Transition to away from iwlist to (faster & richer) iw output
 */
 
 /* in this table:
@@ -28,4 +27,6 @@ v1.0 	initial release
 v1.0.1	survey.sh bugfix for 45 days
 v1.0.2	survey.sh: scrape N speeds from iw; added # stations tracked
 v1.0.3	when starting up on routers with > 10MB on tmpfs, ewget OUIs.js directly from gitbub
+v1.1	add a single button that downloads OUIs.js to RAM/USB (+ optional /etc/rc.local script injection) & removes OUIs.js;
+		another 45 day bugfix; check+indicate when wifi is down; show >1 encryption methods; >N600 speeds are streamsx150 (the HP fix)
 */

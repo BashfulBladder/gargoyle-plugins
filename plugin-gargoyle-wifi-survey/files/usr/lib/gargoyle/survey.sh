@@ -8,10 +8,20 @@ iw_sta_dir=/tmp/iw_stations
 
 now=$(date "+%Y%m%d%H%M")
 iwps=`ps | grep iwlist | grep -v grep`
+wifs=`awk '{ gsub(/:/,""); printf (NR>2 ? $1" " : null)} END {printf "\n"}' /proc/net/wireless`
 memb=1
 
-if [ ! -z "$iwps" ] ; then
+printANDexit() {
+	cat "$oldSurvey"
 	exit
+}
+
+if [ ! -z "$iwps" ] ; then
+	printANDexit
+fi
+
+if [ -z "$wifs" ] ; then
+	printANDexit
 fi
 
 if [ ! -d "$sta_dir" ] ; then
@@ -45,7 +55,11 @@ do
   if [ -e "$iw_sta_dir"/station1 ] ; then
   	target=`grep -i -e $MAC -r $iw_sta_dir | awk -F ':' '{print \$1}'`
     HTmode=`grep -m 1 -e 'HT40' $target`
-    Nspeed=`awk '/HT capabilities:/ {txt=1;next} /HT operation:/{txt=0} txt{print}' $target | awk -F '[ -]' '/rate indexes supported:/ {print ($(NF)+1) * 18.75}' `
+    Nspeed=`awk '/HT capabilities:/ {txt=1;next} /HT operation:/{txt=0} txt{print}' $target | awk -F '[ -]' '/rate indexes supported:/ {printf "%i",  ($(NF)+1) * 18.75}' `
+    streams=`awk '/HT capabilities:/ {txt=1;next} /HT operation:/{txt=0} txt{print}' $target | awk -F ':' '/Max spatial streams/ {printf "%i", $2}' `
+    if [ -z "$streams" ] ; then
+    	streams=1
+    fi
   fi
 	
   printf "sdata.push([\"%s\",\"%s\",\"%i\",\"%.3f\",\"%s\",\"%i\",\"%s\",\"%s\",[" \
@@ -66,6 +80,9 @@ do
     printf ",150" >> "$newSurvey"
   fi
   if [ ! -z "$Nspeed" ] && [ "$Nspeed" -gt 0 ] ; then #802.11n MIMO
+  	if [ $Nspeed -gt 600 ] ; then
+  		Nspeed=$(expr $streams \* 150)
+  	fi
     printf ",%i" "$Nspeed" >> "$newSurvey"
   fi
   printf "],\"%s\"" "$Mode" >> "$newSurvey"
@@ -83,12 +100,12 @@ rm -rf "$sta_dir"
 
 iwps=`ps | grep iwlist | grep -v grep`
 if [ ! -z "$iwps" ] ; then   #minimize impact of repeated webpage loadings
-	exit
+	printANDexit
 fi
 
 while true; do
 	if [ ! -e "$oldSurvey" ] ; then
-		break #ah, our first time - its special
+		break
 	fi
 	aline=$(awk -v rec=$memb 'NR==rec {print $0}' "$oldSurvey")
 	if [ -z "$aline" ] ; then
@@ -99,21 +116,24 @@ while true; do
 	ats=`echo "$aline" | awk -F '\"' '{print $4}'`
 	if [ ! -z "$amac" ] ; then
 		curr_mac=`grep -e "$amac" "$newSurvey"`
-		
 		if [ -z "$curr_mac" ] ; then
-			if [ $(expr $now - $ats) -lt 1850000 ] ; then
+			time_diff=$(expr $now - $ats)
+			if [ $time_diff -gt 1400000 ] ; then
+				time_diff=$(expr $time_diff - 1400000)
+			fi
+			if [ $time_diff -gt 700000 ] ; then
+				time_diff=$(expr $time_diff - 700000)
+			fi
+			if [ $time_diff -lt 450000 ] ; then
 				echo $aline >> "$newSurvey"
 			fi
 		fi
 	fi
 	let memb++
 done
-iwps=`ps | grep iwlist | grep -v grep`
-if [ ! -z "$iwps" ] ; then   #minimize impact of repeated webpage loadings
-	exit
-fi
+
 rm -rf "$iw_sta_dir"
 rm "$iw_out"
 
 mv -f "$newSurvey" "$oldSurvey"
-cat "$oldSurvey"
+printANDexit
