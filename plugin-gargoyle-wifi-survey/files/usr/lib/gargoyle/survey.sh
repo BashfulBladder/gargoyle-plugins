@@ -13,6 +13,7 @@ memb=1
 
 printANDexit() {
 	cat "$oldSurvey"
+	cat /tmp/chfrq.txt
 	exit
 }
 
@@ -35,11 +36,16 @@ cd "$sta_dir"
 iwlist scan 2>/dev/null | sed '/          Cell 01/,$!d' | awk '/          Cell/{x="station"++i;}{print > x;}'
 
 echo "var sdata = new Array();" > "$newSurvey"
+echo "var chdata = new Array();" > /tmp/chfrq.txt
+echo "var frqdata = new Array();" >> /tmp/chfrq.txt
 
 if [ -e /usr/sbin/iw ] ; then
   for wiface in `iwconfig 2>/dev/null | grep 'IEEE' | awk '{print $1}'`
   do
     iw dev "$wiface" scan >> "$iw_out"
+    # yes, floating point because awk was changing channels 3,7 & 11 to be off by 1 MHz
+    iwlist "$wiface" chan | awk -v freq="$freq2" '/Channel/ {printf "chdata.push([%i,%.0f]);\n", $2, $4*1000}' >> /tmp/chfrq.txt
+    iw dev "$wiface" survey dump | awk '/frequency/,/noise/ { i++; ORS=i%2?FS:RS; printf i%2 ? "frqdata.push(["$2 : ","$2"]);\n"}' >> /tmp/chfrq.txt
   done
   awk '/^BSS/{x=++i;} x{print > "/tmp/iw_stations/station"x;}' "$iw_out"
 fi
@@ -59,6 +65,17 @@ do
     streams=`awk '/HT capabilities:/ {txt=1;next} /HT operation:/{txt=0} txt{print}' $target | awk -F ':' '/Max spatial streams/ {printf "%i", $2}' `
     if [ -z "$streams" ] ; then
     	streams=1
+    fi
+    # more awk floating point joy;
+    # iwlist quality is expressed 22/70, whereas if iw is present, Qual is just the noise floor (here's hoping)
+    noise=`awk -v frq="$Freq" 'BEGIN{FS="[],[]"} {f=frq*10*10*10} /frqdata/ {if (f == $2) print $3}' /tmp/chfrq.txt`
+    if [ ! -z "$noise" ] ; then
+    	Qual=$noise
+    fi
+    
+    #take care of some weird -100/-87 inversions; don't know how correct this is, but as signal fluctuates, consider this part&parcel
+    if [ $noise -gt $Level ] ; then
+    	Level=$(expr $noise - $(expr $Level - $noise))
     fi
   fi
 	

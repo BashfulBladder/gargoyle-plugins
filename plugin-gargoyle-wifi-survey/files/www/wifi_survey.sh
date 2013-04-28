@@ -10,9 +10,9 @@
 <script>
 <!--
 <?
-	smb_share=`uci show samba | grep -m 1 '/tmp/usb_mount' | awk -F '=' '{print $2}'`
-	nfs_share=`uci show nfsd | grep -m 1 '/tmp/usb_mount' | awk -F '=' '{print $2}'`
-	ftp_share=`uci show vsftpd | grep -m 1 '/tmp/usb_mount' | awk -F '=' '{print $2}'`
+	smb_share=`uci -q show samba | grep -m 1 '/tmp/usb_mount' | awk -F '=' '{print $2}'`
+	nfs_share=`uci -q show nfsd | grep -m 1 '/tmp/usb_mount' | awk -F '=' '{print $2}'`
+	ftp_share=`uci -q show vsftpd | grep -m 1 '/tmp/usb_mount' | awk -F '=' '{print $2}'`
 	oui_src=""
 	sharepoint=""
 	share_freespace=""
@@ -72,8 +72,10 @@ for (sd in sdata) {
 .backer{ display:block; width:90px; height:8px; background:#ddd; border-radius:4px; margin: 0 0 8px 0;}
 .dbacker{ display:block; width:90px; height:8px; background:#aaa; border-radius:4px; margin: 0 0 8px 0;}
 
+.bfiller{ display:block; height:8px; background:#0066ff; border-radius:4px; }
 .gfiller{ display:block; height:8px; background:#00ff00; border-radius:4px; }
 .yfiller{ display:block; height:8px; background:#ffff00; border-radius:4px; }
+.ofiller{ display:block; height:8px; background:#ff9900; border-radius:4px; }
 .rfiller{ display:block; height:8px; background:#ff0000; border-radius:4px; }
 	
 </style>
@@ -110,6 +112,13 @@ for (sd in sdata) {
 			<span class='rightcolumnonly' id='button_info'>Hold down alt/option key to survive restarts.</span>
 		</em>
 	</div>
+</fieldset>
+
+<fieldset id="chutil" style="display:none;">
+	<legend class="sectionheader">Channel Utilization</legend>
+	
+	<object id="band24" data="channels.svg" type="image/svg+xml" style="margin: 5px; float:left; width:700px; height:700px; background: #272727"></object>
+	
 </fieldset>
 
 <script>

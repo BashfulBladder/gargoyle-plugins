@@ -58,15 +58,20 @@ mv /tmp/rc.local /etc/rc.local
 #its jacked up, but delete OUIs.js from each mounted partition
 mnt=1
 while true; do
-  apart=$$(awk -v mnt=$$mnt 'NR==mnt {print $$3}' /tmp/mounted_usb_storage.tab)
-  if [ -z $$apart ] ; then
-    break
+  if [ -e /tmp/mounted_usb_storage.tab ] ; then
+    apart=$$(awk -v mnt=$$mnt 'NR==mnt {print $$3}' /tmp/mounted_usb_storage.tab)
+    if [ -z $$apart ] ; then
+      break
+    fi
+    if [ -e $$apart/OUIs.js ] ; then
+      rm -f $$apart/OUIs.js
+    fi
+    let mnt++
   fi
-  if [ -e $$apart/OUIs.js ] ; then
-    rm -f $$apart/OUIs.js
-  fi
-  let mnt++
 done
+if [ -e /tmp/OUIs.js ] ; then
+  rm -f /tmp/OUIs.js
+fi
 endef
 
 define Package/plugin-gargoyle-wifi-survey/install

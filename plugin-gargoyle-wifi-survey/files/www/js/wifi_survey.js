@@ -8,9 +8,18 @@
 
 var shellvarsupdater = null;
 var vdr=new Array();
+var nfloor=new Array(); // [channel# (136), frequency in MHz (5700), noise floor (-120)]
 var curr_sta = 0;
+
+var band2p4noise = null;
+var plotStationData = null;
+
 window.onkeyup = KeyCaptureU;
 window.onkeydown = KeyCaptureD;
+
+var updateTotalPlot = null;
+var Band2p4ChartPlot = null;
+var iter = 0;
 
 function MatchOUI(mac) {
 	var devOUI = mac.substr(0,2) + mac.substr(3,2) + mac.substr(6,2);
@@ -35,6 +44,54 @@ function NewTextDiv(strArray, col) {
 	for (var i=0; i < strArray.length; i++) {
 		a_div.innerHTML+=strArray[i]+ "<br/>\n";
 	}
+	return a_div;
+}
+
+function SNRDiv(freq, strength, noise_floor, width, row) {
+	var floor=-120;
+	if (noise_floor < 0) {
+		floor = noise_floor;
+	} else {
+		for (var i=0; i < nfloor.length; i++) {
+			if (freq*1000 == nfloor[i][1]) {
+				floor=nfloor[i][2];
+				break;
+			}
+		}
+	}
+	var SNR=strength-floor;
+	if (SNR > 60) { SNR = 60; } //limit SNR to 60 
+
+	var a_tag = document.createElement('a');
+	if (row%2 == 1) {
+		a_tag.className = "backer";
+	} else {
+		a_tag.className = "dbacker";
+	}
+	a_tag.title="Signal to noise ratio: " + SNR;
+	
+	var a_span = document.createElement('span');
+	a_span.style.width=90 * (SNR/60) + "px";
+	if (SNR >= 40) {
+		a_span.className = "bfiller";
+	} else if (SNR >=30 && SNR < 40) {
+		a_span.className = "gfiller";
+	} else if (SNR >=20 && SNR < 30) {
+		a_span.className = "yfiller";
+	} else if (SNR >=10 && SNR < 20) {
+		a_span.className = "ofiller";
+	} else {
+		a_span.className = "rfiller";
+	}	
+	setSingleChild(a_tag, a_span);
+	
+	var a_div=document.createElement('div');
+	a_div.id="col4";
+	a_div.style.width=width + "px";
+	a_div.style.textAlign="center";
+	a_div.appendChild(a_tag);
+	a_div.title="Signal level/Noise floor, in dBm";
+	a_div.innerHTML+=strength + "/" + floor + "<br/>\n";
 	return a_div;
 }
 
@@ -178,7 +235,12 @@ function FillTable(new_shell_vars, now_time) {
 		var col1div=NewTextDiv([stations[i][7], stations[i][0], MatchOUI(stations[i][0])], i);
 		var col2div=NewTextDiv(["Ch " + stations[i][2] + " - " + stations[i][3] + "GHz", Speed(stations[i][8]), Crypt(stations[i][6], crypos)], i);
 		var col3div=NewTextDiv([stations[i][9], LastSeen(nTime, stations[i][1]) ], i);
-		var col4div=SignalDiv(stations[i][4], stations[i][5], 100, i);
+		//if (nfloor.length > 1) {
+		if (eval(stations[i][4]) < 0) {
+			var col4div=SNRDiv(stations[i][3], stations[i][5], stations[i][4], 100, i);
+		} else {
+			var col4div=SignalDiv(stations[i][4], stations[i][5], 100, i);
+		}
 		tableData.push([col1div, col2div, col3div, col4div]);
 	}
 	
@@ -216,8 +278,17 @@ function UpdateSurvey() {
 			eval(shell_output);
 			curr_sta=0;
 			ShowAdvisory(wifs);
+			AssembleNoiseFloor(chdata, frqdata);
 			FillTable(sdata, curr_time);
 			setControlsEnabled(true);
+			
+			if (wifs.length > 0) {
+				var chutilField = document.getElementById("chutil");
+				chutilField.style.display = "block";
+				AssembleBandLimitedNoiseFloor(nfloor);
+				AssemblePlotStationData(sdata, curr_time);
+				chart();
+			}
 		}
 	}
 	runAjax("POST", "utility/run_commands.sh", param, stateChangeFunction);
@@ -332,14 +403,11 @@ function DoVendorFile(button_name) {
 		commands.push("ewget https://raw.github.com/BashfulBladder/gargoyle-plugins/master/plugin-gargoyle-wifi-survey/OUIs.js -O " + 
 						(button_name.split("+")[0] == "usb" ? sharepoint : "/tmp") + "/OUIs.js");
 		if (button_name.split("+").length > 1) {
-			//handle rc.local; even for tmpfs, check if file exists before downloading (only useful for USB)
-			//commands.push("ouiLine=\"if [ ! -e " + (button_name.split("+")[0] == "usb" ? sharepoint : "/tmp") + "/OUIs.js ] ; then ewget https://raw.github.com/BashfulBladder/gargoyle-plugins/master/plugin-gargoyle-wifi-survey/OUIs.js -O " + (button_name.split("+")[0] == "usb" ? sharepoint : "/tmp") + "/OUIs.js ; fi\"");
 			if (button_name == "usb+rc.local") {
 				commands.push("ouiLine=\"if [ ! -e " + sharepoint + "/OUIs.js ] ; then ewget https://raw.github.com/BashfulBladder/gargoyle-plugins/master/plugin-gargoyle-wifi-survey/OUIs.js -O " + sharepoint + "/OUIs.js ; fi\"");
 			} else {
 				commands.push("ouiLine=\"ewget https://raw.github.com/BashfulBladder/gargoyle-plugins/master/plugin-gargoyle-wifi-survey/OUIs.js -O /tmp/OUIs.js\"");
 			}
-			//commands.push("awk -v oui=\"$ouiLine\" '/^exit 0/{print oui}1' /etc/rc.local > /tmp/rc.local");
 			commands.push("grep -v -e 'plugin-gargoyle-wifi-survey/OUIs.js' /etc/rc.local | awk -v oui=\"$ouiLine\" '/^exit 0/{print oui}1' > /tmp/rc.local");
 			commands.push("mv /tmp/rc.local /etc/rc.local");
 		}
@@ -354,3 +422,69 @@ function DoVendorFile(button_name) {
 	}
 	runAjax("POST", "utility/run_commands.sh", param, stateChangeFunction);
 }
+
+function AssembleNoiseFloor(chdata, frqdata) {
+	nfloor.length=0;
+	for (var i=0; i < chdata.length; i++) {
+		for (var j=0; j < frqdata.length; j++) {
+			if (chdata[i][1] == frqdata[j][0]) {
+				nfloor.push([chdata[i][0],chdata[i][1],frqdata[j][1]]);
+				break;
+			}
+		}
+	}
+	nfloor.sort(function(a, b) { return (a[1] < b[1] ? -1 : (a[1] > b[1] ? 1 : 0)); });
+}
+
+function AssemblePlotStationData(stadata, currTime) {
+	plotStationData = new Array(); //form is: [["BSSID", 1, 2417, -65], another...]
+	var time_diff = 0;
+	for (var i=0; i < stadata.length; i++) {
+		time_diff = Math.abs( strtotime(currTime) - strtotime(stadata[i][1]) );
+		if (time_diff < 1500000) {
+			plotStationData.push([stadata[i][7],stadata[i][2],stadata[i][3]*1000,stadata[i][5]]);
+		}
+	}
+	plotStationData.sort(function(a, b) { return (a[3] < b[3] ? -1 : (a[3] > b[3] ? 1 : 0)); }); //sort by highest signal first
+}
+
+function AssembleBandLimitedNoiseFloor(fullnoisefloor) {
+	band2p4noise = new Array();
+	for (var i=0; i < fullnoisefloor.length; i++) {
+		if (fullnoisefloor[i][0] <= 14) {
+			band2p4noise.push(fullnoisefloor[i]);
+		} else {
+			break;
+		}
+	}
+}
+
+/*        Special thanks to Eric Bishop for figuring this out, because I sure as hell couldn't       */
+/*  This is (almost exactly) copied directly from bandwidth.js to load the SVG graph's plot function */
+
+function chart() {
+	if (Band2p4ChartPlot != null) {
+	
+	} else {
+		setTimeout(chart, 25); //try again in 25 milliseconds; Safari takes about 238 iterations to acquire the plot
+		if (Band2p4ChartPlot == null) {
+			Band2p4ChartPlot = getEmbeddedSvgPlotFunction2("band24");
+		}
+	}
+	if (Band2p4ChartPlot != null) {
+		Band2p4ChartPlot(band2p4noise,plotStationData);
+	}
+}
+
+function getEmbeddedSvgPlotFunction2(embeddedId, controlDocument)
+{
+	if(controlDocument == null) { controlDocument = document; }
+
+	windowElement = getEmbeddedSvgWindow(embeddedId, controlDocument);
+	if( windowElement != null)
+	{
+		return windowElement.plotBand;
+	}
+	return null;
+}
+

@@ -1,0 +1,426 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1">
+
+<script type="text/javascript"><![CDATA[
+	var svgNS = "http://www.w3.org/2000/svg"
+	var y_unit=7.625;
+	var ChSignalHigh = new Array();
+	
+	function GenColor() {
+  		function colorcode() { return Math.floor(Math.random()*256); }
+  		function hexus(num) { return num < 16 ? "0" + num.toString(16) : num.toString(16) }
+		var rColor=0;
+		var gColor=0;
+		var bColor=0;
+		while (rColor+gColor+bColor < 256) {
+			rColor=colorcode();
+			gColor=colorcode();
+			bColor=colorcode();
+		}
+		return "#" + hexus(rColor) + hexus(gColor) + hexus(bColor);
+	}
+	
+	function GetHeightFromSignal(signal_level) {
+		return Math.abs(signal_level)*y_unit + 10
+	}
+	
+	function GetChannelCenter(channel) {
+		var achannel=document.getElementById("Ch"+channel);
+		var chann_tmatrix = achannel.getCTM();
+		return chann_tmatrix.e/chann_tmatrix.d -50
+	}
+	
+	function GetNoiseFloorCoord(x_point) {
+		if (x_point < 100) { x_point = 0; }
+		if (x_point > 855) { x_point = 855; }
+		
+		var nfpath = document.getElementById("NoiseFloorPath");
+ 		var nflength = nfpath.getTotalLength();
+ 		var nfcoord=nfpath.getPointAtLength(0);
+ 		for (var i=0; i<nflength; i++) {
+ 			nfcoord=nfpath.getPointAtLength(i);
+  			if (Math.round(nfcoord.x) == Math.round(x_point)) {
+  				return nfcoord.y;
+  			}
+		}
+		return GetHeightFromSignal(-120);
+	}
+	
+	function GeneratePathElement(swidth, pcolor, fcolor, fopacity, pathdata) {
+		var apath = document.createElementNS (svgNS, "path");
+		apath.setAttributeNS (null, 'stroke', pcolor);
+		apath.setAttributeNS (null, 'stroke-width', swidth);
+		apath.setAttributeNS (null, 'stroke-linejoin', "round");
+		apath.setAttributeNS (null, 'd', pathdata);
+		apath.setAttributeNS (null, 'fill', fcolor);
+		apath.setAttributeNS (null, 'opacity', fopacity);
+		return apath;
+	}
+	
+	function plotNoiseFloor(container, noise) {
+		var inNoiseX = 0;
+		var inNoiseY = GetHeightFromSignal(noise[0][2]); //[1,2412,-90], [2,2417,-85]
+		var nline="M"+inNoiseX+","+inNoiseY;
+		
+		for (var i=0; i<noise.length; i++) {
+			var anoiseX = GetChannelCenter(noise[i][0]);
+			var anoiseY = GetHeightFromSignal(noise[i][2]);
+			nline+=" c"+(anoiseX-inNoiseX)/2+","+"0" /* x1,y1; x is 1/2 way to endpoint, no y-axis change */
+						+","+(anoiseX-inNoiseX)/2+","+(anoiseY-inNoiseY) /* x2,y2 */
+						+","+(anoiseX-inNoiseX)+","+(anoiseY-inNoiseY) /* endx,endy */
+						+" ";
+			inNoiseX=anoiseX;
+			inNoiseY=anoiseY;
+		}
+		nline+="L"+935+","+inNoiseY;
+		
+		var nfpath = GeneratePathElement(5, "#ffffff", "transparent", 1.0, nline);
+		nfpath.id="NoiseFloorPath";
+		container.appendChild(nfpath);
+		var nffillpath = GeneratePathElement(0, "#ffffff", "#444444", 0.9, nline+ "V924 H0");
+		nffillpath.id="NoiseFloorFill";
+		container.appendChild(nffillpath);
+	}
+	
+	//plot each station from noise floor to plateau to noise floor with the curved slopes
+	//append each station's data with the generated color code - color is reused in BSSID label
+	//each station has 2 elements with the same path: the more vivid stroke & the more transparent fill
+	function plotStations(container, stations) { // [ ["Craptacity", 1, 2417, -65], ["YD5BA", 3, 2422, -87] ];
+		var chanWidth = GetChannelCenter(6)-GetChannelCenter(5);
+		var chanSpread = chanWidth * 3.125;
+		
+		for (var i = 0; i<stations.length; i++) {
+			if (stations[i][1] > 15) { continue; } //stations contains 2.4GHz & 5GHz data
+			var signal_height = GetHeightFromSignal(stations[i][3]);
+			var channel_center = GetChannelCenter(stations[i][1]);
+			var leadingNoise = GetNoiseFloorCoord( channel_center-(chanSpread*0.6) ); //GetHeightFromSignal(-90);
+			var trailingNoise = GetNoiseFloorCoord( channel_center+(chanSpread*0.6) ); //GetHeightFromSignal(-90);
+			var spath="M"+(channel_center-(chanSpread*0.6)) +","+leadingNoise;
+			spath+= " c"+(chanWidth*0.33)+","+((signal_height-leadingNoise)*0.333) /* x1,y1 */
+						+","+(chanWidth*0.33)+","+((signal_height-leadingNoise)*0.666) /* x2,y2 */
+						+","+(chanWidth*0.33)+","+(signal_height-leadingNoise) /* endpoint */
+						+" ";
+			spath+="l"+chanSpread+","+"0";
+			spath+= " c"+"0,"+Math.abs((signal_height-trailingNoise)*0.666) /* x1,y1 */
+						+","+(chanWidth*0.33)+","+Math.abs(signal_height-trailingNoise) /* x2,y2 */
+						+","+(chanWidth*0.33)+","+Math.abs(signal_height-trailingNoise) /* endpoint */
+						+" ";
+			var scolor=GenColor();
+			
+			var stpath = GeneratePathElement(5, scolor, "transparent", 1.0, spath);
+			stpath.id="StationPath_"+i;
+			container.appendChild(stpath);
+			var stpathFill = GeneratePathElement(0, scolor, scolor, 0.3, spath);
+			container.appendChild(stpathFill);
+			
+			stations[i].push(scolor);
+			var stchannel=stations[i][1];
+			if (ChSignalHigh[ stchannel-1 ] > signal_height) {
+				ChSignalHigh[ stchannel-1 ] = signal_height;
+			}
+		}
+	}
+	
+	//1st for loop drops lines from highest signal in each channel (above background noise) as an indicator of channel assignment
+	//2nd for loop adds station BSSIDs text labels from lowest signal level to highest (already sorted by wifi_survey.js)
+	function GenerateLabels(container, stations) {
+		for (var i = 0; i<ChSignalHigh.length; i++) {
+			if (ChSignalHigh[i] > -120) {
+				var chassL="M" + GetChannelCenter(i+1)+","+ChSignalHigh[i]
+							+"l0,"+(GetHeightFromSignal(-120)-ChSignalHigh[i]);
+				var chassPE=GeneratePathElement(2, "#cccccc", "transparent", 0.6, chassL);
+				container.appendChild(chassPE);
+			}
+		}
+		
+		for (var j = stations.length-1; j> -1; j--) {
+			if (stations[j][1] > 15) { continue; } //stations contains 2.4GHz & 5GHz data
+			var stchannel=stations[j][1];
+			ChSignalHigh[stchannel-1]-=(1.5*y_unit);
+			
+			var stextE = document.createElementNS(svgNS, "text");
+			stextE.setAttribute("x", GetChannelCenter(stations[j][1]) );
+			stextE.setAttribute("y", ChSignalHigh[stchannel-1]);
+			stextE.textContent = stations[j][0];
+			stextE.setAttribute("text-anchor", "middle");
+			stextE.setAttribute("font-size", "30px");
+			
+			stextE.setAttribute("style", "fill:"+stations[j][4]);
+			container.appendChild(stextE);
+			
+			ChSignalHigh[stchannel-1]-=(3*y_unit);
+			stations[j].pop();
+		}
+	}
+	
+	//creates a overlay rect on signal data that may be in the y axis label area
+	function GenYBacker(container) {
+		var arect = document.createElementNS (svgNS, "rect");
+		arect.setAttributeNS (null, 'x', -44);
+		arect.setAttributeNS (null, 'y', 0);
+		arect.setAttributeNS (null, 'height', 1000);
+		arect.setAttributeNS (null, 'width', 40);
+		arect.setAttributeNS (null, 'fill', "#222222");
+		arect.setAttributeNS (null, 'opacity', 0.8);
+		container.appendChild(arect);
+	}
+	
+	//ChSignalHigh stores the highest signal in a channel (500px is higher than 900px in this chart) while channels are plotted
+	//during GenerateLabels(), ChSignalHigh takes on the role of where to put text labels on the y axis in a given channel
+	function InitChannelHighs() {
+		for (var i=0; i<13; i++) {
+			ChSignalHigh[i] = GetHeightFromSignal( -120 );
+		}
+	}
+  
+    function plotBand(noise, stations) {
+    	InitChannelHighs();
+    	
+    	//deletes all channel data for nth run (all new colors, new noise floor & stations)
+    	var grouping = document.getElementById("StationDataG");
+    	if (grouping != null) {
+    		grouping.parentNode.removeChild(grouping);
+    	}
+    	
+    	var svgChart = document.getElementById("chartarea");
+    	var gStation = document.createElementNS (svgNS, "g");
+    	gStation.id="StationDataG";
+    	svgChart.appendChild(gStation);
+    	
+    	//noise floor first because y coordinates at the s bases of stations start at the noise floor
+    	plotNoiseFloor(gStation, noise);
+    	plotStations(gStation, stations);
+    	
+    	//bring noise floor to front of StationDataG to overlay the lower range of the signal(s)
+    	var npathE = document.getElementById("NoiseFloorPath");
+    	var nfillE = document.getElementById("NoiseFloorFill");
+    	gStation.removeChild(npathE);
+    	gStation.removeChild(nfillE);
+    	gStation.appendChild(npathE);
+    	gStation.appendChild(nfillE);
+    	
+    	GenerateLabels(gStation, stations);
+		GenYBacker(gStation);
+    }
+    
+  ]]></script>
+
+<style type="text/css" >
+	<![CDATA[
+	
+.graph {
+  background-color: #000000;
+  background:#444444;
+  font-size: 14px;
+  height: 50%;
+  margin-bottom: 16px;
+  width: 100%;
+  fill: #000000;
+}
+
+.graph svg {
+  overflow: visible;
+}
+.tick {
+  shape-rendering: "crispEdges";
+  stroke: #ffffff;
+  stroke-width: 1px;
+}
+.mark {
+  shape-rendering: "crispEdges";
+  stroke: #666666;
+  stroke-width: 1px;
+}
+.ch_center {
+  stroke: #000000;
+  stroke-width: 1px;
+}
+.x_label { font-size: 24px; }
+.y_label { font-size: 16px; }
+.band { font-size: 225px; color:#555555; opacity: 0.1;}
+.graph-val {
+  text-anchor: end;
+}
+
+text {
+  fill: #fff;
+}
+
+.line {
+  fill: none;
+  stroke-width: 3px;
+}
+
+]]>
+</style>
+    
+<svg class="graph">
+	<text x="35" y="3" dy=".71em" class="band" text-anchor="left">2</text>
+	<text x="130" y="3" dy=".71em" class="band" text-anchor="left">.</text>
+	<text x="155" y="3" dy=".71em" class="band" text-anchor="left">4GHz</text>
+	<svg viewBox="0 0 1000 1000" preserveAspectRatio="none">
+		<g id="chartarea" transform="translate(50,0)">
+		</g>
+		<g transform="translate(50,0)">
+			<g class="x axis" transform="translate(0,935)">
+				<text class="x_label" y="30" x="450" dy=".71em" text-anchor="middle">Channel</text>
+				<g style="opacity: 0;" transform="translate(0,10)">
+					<line class="tick" y2="6" x2="0"></line>
+				</g>
+				<g style="opacity: 1;" transform="translate(66.65,-10)">
+					<line class="tick" y2="6" x2="0"></line>
+				</g>
+				<g style="opacity: 1;" transform="translate(99.975,0)">
+					<line id="Ch1" class="ch_center" y2="6" x2="0"></line>
+					<text y="9" x="0" dy=".71em" text-anchor="middle"> 1</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(131.334,-10)">
+					<line class="tick" y2="6" x2="0"></line>
+				</g>
+				<g style="opacity: 1;" transform="translate(162.693,0)">
+					<line id="Ch2" class="ch_center" y2="6" x2="0"></line>
+					<text y="9" x="0" dy=".71em" text-anchor="middle"> 2</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(194.052,-10)">
+					<line class="tick" y2="6" x2="0"></line>
+				</g>
+				<g style="opacity: 1;" transform="translate(225.411,0)">
+					<line id="Ch3" class="ch_center" y2="6" x2="0"></line>
+					<text y="9" x="0" dy=".71em" text-anchor="middle"> 3</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(256.77,-10)">
+					<line class="tick" y2="6" x2="0"></line>
+				</g>
+				<g style="opacity: 1;" transform="translate(288.129,0)">
+					<line id="Ch4" class="ch_center" y2="6" x2="0"></line>
+					<text y="9" x="0" dy=".71em" text-anchor="middle"> 4</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(319.488,-10)">
+					<line class="tick" y2="6" x2="0"></line>
+				</g>
+				<g style="opacity: 1;" transform="translate(350.847,0)">
+					<line id="Ch5" class="ch_center" y2="6" x2="0"></line>
+					<text y="9" x="0" dy=".71em" text-anchor="middle"> 5</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(382.206,-10)">
+					<line class="tick" y2="6" x2="0"></line>
+				</g>
+				<g style="opacity: 1;" transform="translate(413.565,0)">
+					<line id="Ch6" class="ch_center" y2="6" x2="0"></line>
+					<text y="9" x="0" dy=".71em" text-anchor="middle"> 6</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(444.924,-10)">
+					<line class="tick" y2="6" x2="0"></line>
+				</g>
+				<g style="opacity: 1;" transform="translate(476.283,0)">
+					<line id="Ch7" class="ch_center" y2="6" x2="0"></line>
+					<text y="9" x="0" dy=".71em" text-anchor="middle"> 7</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(507.642,-10)">
+					<line class="tick" y2="6" x2="0"></line>
+				</g>
+				<g style="opacity: 1;" transform="translate(539.001,0)">
+					<line id="Ch8" class="ch_center" y2="6" x2="0"></line>
+					<text y="9" x="0" dy=".71em" text-anchor="middle"> 8</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(570.36,-10)">
+					<line class="tick" y2="6" x2="0"></line>
+				</g>
+				<g style="opacity: 1;" transform="translate(601.719,0)">
+					<line id="Ch9" class="ch_center" y2="6" x2="0"></line>
+					<text y="9" x="0" dy=".71em" text-anchor="middle"> 9</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(633.078,-10)">
+					<line class="tick" y2="6" x2="0"></line>
+				</g>
+				<g style="opacity: 1;" transform="translate(664.437,0)">
+					<line id="Ch10" class="ch_center" y2="6" x2="0"></line>
+					<text y="9" x="0" dy=".71em" text-anchor="middle">10</text>
+				</g>
+			   <g style="opacity: 1;" transform="translate(695.796,-10)">
+					<line class="tick" y2="6" x2="0"></line>
+				</g>
+				<g style="opacity: 1;" transform="translate(727.155,0)">
+					<line id="Ch11" class="ch_center" y2="6" x2="0"></line>
+					<text y="9" x="0" dy=".71em" text-anchor="middle">11</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(758.514,-10)">
+					<line class="tick" y2="6" x2="0"></line>
+				</g>
+				<g style="opacity: 1;" transform="translate(789.873,0)">
+					<line id="Ch12" class="ch_center" y2="6" x2="0"></line>
+					<text y="9" x="0" dy=".71em" text-anchor="middle">12</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(821.232,-10)">
+					<line class="tick" y2="6" x2="0"></line>
+				</g>
+				<g style="opacity: 1;" transform="translate(852.591,0)">
+					<line id="Ch13" class="ch_center" y2="6" x2="0"></line>
+					<text y="9" x="0" dy=".71em" text-anchor="middle">13</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(882,-10)">
+					<line class="tick" y2="6" x2="0"></line>
+				</g>
+				<text y="43" x="715" dy=".71em" style="font-size:14; fill:#999999" text-anchor="left">stations seen in the last 15 minutes</text>
+			</g>
+			<g class="y axis" transform="translate(0, 0)">
+				<text class="y_label" y="-45" x="-450" dy=".71em" transform="rotate(-90)" text-anchor="middle">Signal Level (in dbm)</text>
+				<g style="opacity: 1;" transform="translate(6,925)">
+					<line class="tick" x2="-6" y2="0"></line>
+					<text x="-15" y="0" dy=".32em" text-anchor="end">-120</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(0,848.75)">
+					<line class="mark" x2="1000" y2="0"></line>
+					<text x="-6" y="0" dy=".32em" text-anchor="end">-110</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(0,772.5)">
+					<line class="mark" x2="1000" y2="0"></line>
+					<text x="-6" y="0" dy=".32em" text-anchor="end">-100</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(0,696.25)">
+					<line class="mark" x2="1000" y2="0"></line>
+					<text x="-6" y="0" dy=".32em" text-anchor="end">-90</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(0,620)">
+					<line class="mark" x2="1000" y2="0"></line>
+					<text x="-6" y="0" dy=".32em" text-anchor="end">-80</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(0,543.75)">
+					<line class="mark" x2="1000" y2="0"></line>
+					<text x="-6" y="0" dy=".32em" text-anchor="end">-70</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(0,467.5)">
+					<line class="mark" x2="1000" y2="0"></line>
+					<text x="-6" y="0" dy=".32em" text-anchor="end">-60</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(0,391.25)">
+					<line class="mark" x2="1000" y2="0"></line>
+					<text x="-6" y="0" dy=".32em" text-anchor="end">-50</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(0,315)">
+					<line class="mark" x2="1000" y2="0"></line>
+					<text x="-6" y="0" dy=".32em" text-anchor="end">-40</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(0,238.75)">
+					<line class="mark" x2="1000" y2="0"></line>
+					<text x="-6" y="0" dy=".32em" text-anchor="end">-30</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(0,162.5)">
+					<line class="mark" x2="1000" y2="0"></line>
+					<text x="-6" y="0" dy=".32em" text-anchor="end">-20</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(0,86.25)">
+					<line class="mark" x2="1000" y2="0"></line>
+					<text x="-6" y="0" dy=".32em" text-anchor="end">-10</text>
+				</g>
+				<g style="opacity: 1;" transform="translate(0,10)">
+					<line class="tick" x2="-6" y2="0"></line>
+					<text x="-15" y="0" dy=".32em" text-anchor="end">0</text>
+				</g>
+			</g>
+		</g>
+	</svg>
+</svg>
+
+</svg>

@@ -1,9 +1,17 @@
 /*
 TODO:
-¥ there was an odd sh: 300: bad number error & sh -x /usr/lib/gargoyle/survey.sh didn't pinpoint a problem area (only happend once)
+survey.sh: HT40 channel width
+SVG charts: HT40 channels; 802.11b has a parabolic signal shape
+SVG charts: 5GHz (channel gaps make a non-continuous graph through available channels)
+
+SVG charts: I think broadcom platform is going to have an issue: iw doesn't come installed by default; iw is required for noise floor (although there may be another avenue, I dun't know), without a noise floor, broadcom charting is probably going to look whack
 
 ENHANCEMENTS:
-Transition to away from iwlist to (faster & richer) iw output
+Transition away from iwlist to (faster & richer) iw output
+
+SVG charts: colors jump around every 2 minutes when data is reloaded; maybe find a way to generate a color in survey.sh
+			upside: color is consistent through updates; downside: ugly/dark colors persist forever
+
 */
 
 /* in this table:
@@ -22,6 +30,16 @@ Transition to away from iwlist to (faster & richer) iw output
 
 */
 
+/* SVG chart note:
+
+  As I no longer use the default Gargoyle theme, I am not bound by the (retarded) 500px width limit in Gargoyle html pages of content.
+  Mercifully, as this plugin is not in the Gargoyle repository, a broader view reduces all that irritating empty space on a page.
+  
+  The chart only displays data when current wireless data is fetched from the router. Stale data 6 hours old has little value in setting
+  up your current channels.
+
+*/
+
 /* version history
 v1.0 	initial release
 v1.0.1	survey.sh bugfix for 45 days
@@ -29,4 +47,7 @@ v1.0.2	survey.sh: scrape N speeds from iw; added # stations tracked
 v1.0.3	when starting up on routers with > 10MB on tmpfs, ewget OUIs.js directly from gitbub
 v1.1	add a single button that downloads OUIs.js to RAM/USB (+ optional /etc/rc.local script injection) & removes OUIs.js;
 		another 45 day bugfix; check+indicate when wifi is down; show >1 encryption methods; >N600 speeds are streamsx150 (the HP fix)
+V1.1.1	move to iw noise floor & SNR to represent signal quality (iw seems to be the only 'noise' game in town; max display is 60dbm SNR)
+v1.1.2	(Cexary/obsy) fixed bug when USB/samba/ftp support was not present [webpage]; similar fix in makefile/postrm
+v1.2	inital 2.4GHz svg chart of station distribution, noise & signal levels
 */
