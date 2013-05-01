@@ -150,7 +150,7 @@ function milliToDHM(msec) {
 function LastSeen(time_now, atimestamp) {
 	var diff = Math.abs( strtotime(time_now) - strtotime(atimestamp) );
 	if (diff < 600000) { curr_sta++; }
-	return ( diff < 300000 ? "last seen now" : milliToDHM(diff) );
+	return ( diff < 90000 ? "last seen now" : milliToDHM(diff) );
 }
 
 function Speed(sparr) {
@@ -233,7 +233,7 @@ function FillTable(new_shell_vars, now_time) {
 			crypos.push(stations[i][10+j]);
 		}
 		var col1div=NewTextDiv([stations[i][7], stations[i][0], MatchOUI(stations[i][0])], i);
-		var col2div=NewTextDiv(["Ch " + stations[i][2] + " - " + stations[i][3] + "GHz", Speed(stations[i][8]), Crypt(stations[i][6], crypos)], i);
+		var col2div=NewTextDiv(["Ch " + stations[i][2] + " | " + stations[i][3] + "GHz", Speed(stations[i][8]), Crypt(stations[i][6], crypos)], i);
 		var col3div=NewTextDiv([stations[i][9], LastSeen(nTime, stations[i][1]) ], i);
 		//if (nfloor.length > 1) {
 		if (eval(stations[i][4]) < 0) {
@@ -312,7 +312,7 @@ function WarnOUIs(stations) {
 		var oui_button = document.getElementById("OUIs_button");
 		oui_button.name="remove";
 		oui_button.value="Remove vendors"
-		document.getElementById("oui_info").innerHTML="Erase vendors/OUIs file. File is 775KB.";
+		document.getElementById("oui_info").innerHTML="Erase vendors/OUIs file. File is 803KB.";
 		document.getElementById("button_info").innerHTML="Removes file in RAM on tmpfs, on USB devices & ends downloading at startup."
 	} else {
 		if (sharepoint.length > 0) {
@@ -344,7 +344,7 @@ function Fill_OUI_Info(button_name) {
 	} else {
 		oui_info.innerHTML+="(lost after reboot)";
 	}
-	oui_info.innerHTML+=". File is 775K.";
+	oui_info.innerHTML+=". File is 803K.";
 }
 
 function KeyCaptureD(keyEvent) {
@@ -437,12 +437,17 @@ function AssembleNoiseFloor(chdata, frqdata) {
 }
 
 function AssemblePlotStationData(stadata, currTime) {
-	plotStationData = new Array(); //form is: [["BSSID", 1, 2417, -65], another...]
+	plotStationData = new Array(); //form is: [["BSSID", [1,"+"], 2417, -65], another...]
 	var time_diff = 0;
 	for (var i=0; i < stadata.length; i++) {
 		time_diff = Math.abs( strtotime(currTime) - strtotime(stadata[i][1]) );
-		if (time_diff < 1500000) {
-			plotStationData.push([stadata[i][7],stadata[i][2],stadata[i][3]*1000,stadata[i][5]]);
+		if (time_diff < 900000) {
+			var suppl=stadata[i][2][stadata[i][2].length-1];
+			console.log(suppl+"<-"+stadata[i][2]);
+			var speed=Speed(stadata[i][8]);
+			if (!(suppl=='+' || suppl=='-')) { suppl = ""; }
+			if (speed[speed.length-1] == 'b') { suppl = "b"; }
+			plotStationData.push([stadata[i][7],[parseInt(stadata[i][2]),suppl],stadata[i][3]*1000,stadata[i][5]]);
 		}
 	}
 	plotStationData.sort(function(a, b) { return (a[3] < b[3] ? -1 : (a[3] > b[3] ? 1 : 0)); }); //sort by highest signal first

@@ -52,7 +52,7 @@ fi
 
 for station in `ls $sta_dir`
 do
-  Rates0=""; Rates1=""; Rates2=""; Rates3=""; WPA=""; WPA2v=""; Cipher=""; PWCipher="";
+  Rates0=""; Rates1=""; Rates2=""; Rates3=""; WPA=""; WPA2v=""; Cipher=""; PWCipher=""; channelwidth=""; channeloffset=""; 
   
   shvars=`awk -F '[ :=]+' '/Address/{print"MAC="substr($0,30) } /Channel:/ {print "Chan="$3} /Freq/{print "Freq="$3} /Quality/ {printf "Qual="$3 "\nLevel="$6"\n"} /Encr/{print "Encr="$4} /ESS/{print "ESS="substr($0,27)} /Rates:/{sub(/\n/, " "); printf "Rates%i=%i\n", i++, $(NF-1)} /Rates:/{ getline; sub(/\n/, " "); printf "Rates%i=%i\n", i++, $(NF-1)} /Mode:/{print "Mode="$3} /IEEE 802.11i/ {split($4,a,"/"); print "WPA2v="a[2]"v"$6} /WPA Version 1/ {print "WPA=WPA1"} /Group Cipher/{print "Cipher="$4} /Pairwise Ciphers/{print "PWCipher="$5} /Suites/{print "Suites="$5}' "$sta_dir"/$station`
   
@@ -63,6 +63,7 @@ do
     HTmode=`grep -m 1 -e 'HT40' $target`
     Nspeed=`awk '/HT capabilities:/ {txt=1;next} /HT operation:/{txt=0} txt{print}' $target | awk -F '[ -]' '/rate indexes supported:/ {printf "%i",  ($(NF)+1) * 18.75}' `
     streams=`awk '/HT capabilities:/ {txt=1;next} /HT operation:/{txt=0} txt{print}' $target | awk -F ':' '/Max spatial streams/ {printf "%i", $2}' `
+    Wchvars=`awk '/HT operation:/ {txt=1;next} /secondary channel offset/{print "channeloffset="$5} /STA channel width/{print "channelwidth="$5}' $target`
     if [ -z "$streams" ] ; then
     	streams=1
     fi
@@ -77,9 +78,21 @@ do
     if [ $noise -gt $Level ] ; then
     	Level=$(expr $noise - $(expr $Level - $noise))
     fi
+    
+    eval $Wchvars
+    if [ ! -z "$channeloffset" ] ; then
+    	if [ ! -z $(echo "$channelwidth" | grep '40') ] || [ ! -z $(echo "$channelwidth" | grep '^any') ] ; then
+			if [ "$channeloffset" == "above" ] || [ "$channeloffset" == "+" ] ; then
+				Chan="$Chan+"
+			fi
+			if [ "$channeloffset" == "below" ] || [ "$channeloffset" == "-" ] ; then
+				Chan="$Chan-"
+			fi
+    	fi
+    fi
   fi
 	
-  printf "sdata.push([\"%s\",\"%s\",\"%i\",\"%.3f\",\"%s\",\"%i\",\"%s\",\"%s\",[" \
+  printf "sdata.push([\"%s\",\"%s\",\"%s\",\"%.3f\",\"%s\",\"%i\",\"%s\",\"%s\",[" \
   			"$MAC" "$now" "$Chan" "$Freq" "$Qual" "$Level" "$Encr" "$ESS" >> "$newSurvey"
   if [ ! -z "$Rates0" ] && [ "$Rates0" -gt 0 ] ; then
     printf "%i" "$Rates0" >> "$newSurvey"
