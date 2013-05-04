@@ -24,13 +24,15 @@ var iter = 0;
 function MatchOUI(mac) {
 	var devOUI = mac.substr(0,2) + mac.substr(3,2) + mac.substr(6,2);
 	for (var i=0; i < vdr.length; i++) { 
-		if (devOUI.match(vdr[i][0])) { return vdr[i][1]; }
+		if (devOUI.toUpperCase().match(vdr[i][0])) { return vdr[i][1]; }
 	}
 	return "unknown"
 }
 
 function CleanTable(table) {
 	if (table == null) { return; }
+	if (table.rows.length == 1) { return; }
+	
 	for(var i = table.rows.length; i > 0; i--) {
 		table.deleteRow(i-1);
 	}
@@ -185,6 +187,9 @@ function Crypt(pass, karr) {
 }
 
 function ShowTracking(num_sta) {
+	if (document.getElementById('station_table') == null) { return; }
+	if (document.getElementById('station_table').rows.length <= 1) { return }
+	
 	var fwidth = document.getElementById('wifi_survey').offsetWidth;
 	var twidth = document.getElementsByTagName("tbody")[0].offsetWidth;
 	var tspan = document.getElementById('tracking');
@@ -195,6 +200,7 @@ function ShowTracking(num_sta) {
 }
 
 function ShowCurrentInfo(tspan) {
+	if (document.getElementById('station_table') == null) { return; }
 	var fwidth = document.getElementById('wifi_survey').offsetWidth;
 	var twidth = document.getElementsByTagName("tbody")[0].offsetWidth;
 	var old_text = tspan.innerHTML;
@@ -221,7 +227,7 @@ function FillTable(new_shell_vars, now_time) {
 	
 	if (stations.length == 0) {
 		document.getElementById("note_txt").innerHTML="No stations were found <br/>\n";
-	} else {
+	} else if (new_shell_vars != null) {
 		document.getElementById("note_txt").innerHTML="";
 	}
 	
@@ -248,16 +254,13 @@ function FillTable(new_shell_vars, now_time) {
 	var stableC = document.getElementById('station_table_container');
 	setSingleChild(stableC, sTable);
 	
-	if (new_shell_vars == null || new_shell_vars.length == 0) {
-		document.getElementById("note_txt").innerHTML+="<br/>\nUpdating... <br/>\n";
-		UpdateSurvey();
-	}
 	WarnOUIs(stations);
 	ShowTracking(stations.length);
 }
 
 function InitSurvey() {
 	WarnOUIs(sdata);
+	UpdateSurvey();
 	shellvarsupdater = setInterval("UpdateSurvey(null)", 120000);
 	ShowAdvisory(wifs);
 	FillTable(null);
@@ -265,6 +268,7 @@ function InitSurvey() {
 
 function UpdateSurvey() {
 	var commands = [];
+	document.getElementById("note_txt").innerHTML+="<br/>\nUpdating... <br/>\n";
 	setControlsEnabled(true, false, "Updating station data");
 	commands.push("echo \"var wifs=\\\"`awk '{gsub(/:/,\\\"\\\"); printf (NR>2 ? $1\\\" \\\" : null)} ' /proc/net/wireless`\\\";\"");
 	commands.push("echo \"var curr_time=\\\"`date \"+%Y%m%d%H%M\"`\\\";\"");
@@ -324,31 +328,31 @@ function WarnOUIs(stations) {
 }
 
 function Fill_OUI_Info(button_name) {
+	var OUIsize = "803kb";
 	var oui_info = document.getElementById("oui_info");
 	if (button_name.match(/tmpfs/)) {
 		oui_info.innerHTML="Download vendors/OUIs to RAM ";
 		if (tmp_freespace < 10000) {
 			setElementEnabled(document.getElementById("OUIs_button"), false);
-			document.getElementById("oui_info").innerHTML="Vendors would take too high a percentag eof free RAM";
+			oui_info.innerHTML="Vendors would take too high a percentage of free RAM. File is "+OUIsize+".";
 		}
 	} else if (button_name.match(/usb/)) {
 		oui_info.innerHTML="Download vendors/OUIs to USB device ";
 		if (share_freespace < 2000) {
 			setElementEnabled(document.getElementById("OUIs_button"), false);
-			document.getElementById("oui_info").innerHTML="Not enough space available on USB device to download vendors";
+			oui_info.innerHTML="Not enough space available on USB device to download vendors. File is "+OUIsize+".";
 		}
 	}
 	
 	if (button_name.match(/rc.local/)) {
-		oui_info.innerHTML+="(+ automatically when router starts)";
+		oui_info.innerHTML+="(+ automatically when router starts). File is "+OUIsize+".";
 	} else {
-		oui_info.innerHTML+="(lost after reboot)";
+		oui_info.innerHTML+="(lost after reboot). File is "+OUIsize+".";
 	}
-	oui_info.innerHTML+=". File is 803K.";
 }
 
 function KeyCaptureD(keyEvent) {
-	if (wgetOUI.length > 0) { return }	
+	if (wgetOUI.length > 0 || oui_src.length > 0) { return }
 	var oui_button = document.getElementById("OUIs_button");
 	if (oui_button.className.match(/disabled/)) { return }
 	
@@ -361,11 +365,13 @@ function KeyCaptureD(keyEvent) {
 	if (keyEvent.shiftKey && keyEvent.altKey && sharepoint.length > 0) {
 		oui_button.name="usb+rc.local";
 	}
-	Fill_OUI_Info(oui_button.name);
+	if (keyEvent.altKey || keyEvent.shiftKey) {
+		Fill_OUI_Info(oui_button.name);
+	}
 }
 
 function KeyCaptureU(keyEvent) {
-	if (wgetOUI.length > 0) { return }
+	if (wgetOUI.length > 0 || oui_src.length > 0) { return }
 	var oui_button = document.getElementById("OUIs_button");
 	if (oui_button.className.match(/disabled/)) { return }
 	
@@ -385,16 +391,18 @@ function KeyCaptureU(keyEvent) {
 			oui_button.name=="tmpfs";
 		}
 	}
-	Fill_OUI_Info(oui_button.name);
+	if (keyEvent.keyCode == 16 || keyEvent.keyCode == 18) {
+		Fill_OUI_Info(oui_button.name);
+	}
 }
 
 function DoVendorFile(button_name) {
 	var commands = [];
 	if (button_name == "remove") {
 		setControlsEnabled(false, true, "Purging vendors file");
-		commands.push("rm -f /tmp/OUIs.js");
+		commands.push("rm -rf /tmp/OUIs.js");
 		if (sharepoint.match(/\/tmp\/usb_mount/)) {
-			commands.push("rm -f " + sharepoint + "/OUIs.js");
+			commands.push("rm -rf " + sharepoint + "/OUIs.js");
 		}
 		commands.push("grep -v -e 'plugin-gargoyle-wifi-survey/OUIs.js' /etc/rc.local > /tmp/rc.local");
 		commands.push("mv /tmp/rc.local /etc/rc.local");
@@ -443,7 +451,6 @@ function AssemblePlotStationData(stadata, currTime) {
 		time_diff = Math.abs( strtotime(currTime) - strtotime(stadata[i][1]) );
 		if (time_diff < 900000) {
 			var suppl=stadata[i][2][stadata[i][2].length-1];
-			console.log(suppl+"<-"+stadata[i][2]);
 			var speed=Speed(stadata[i][8]);
 			if (!(suppl=='+' || suppl=='-')) { suppl = ""; }
 			if (speed[speed.length-1] == 'b') { suppl = "b"; }

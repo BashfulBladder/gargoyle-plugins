@@ -26,7 +26,24 @@
 		return charray[0];
 	}
 	
-	function GenColor() {
+	function VerifyUniqColor(stations, rColor,gColor,bColor) {
+		var uniqueness = stations.length < 50 ? 31 : 12;
+		for (var i = 0; i<stations.length; i++) {
+			if (stations[i].length == 5) {
+				var existingR = parseInt(stations[i][4].substr(1,2),16);
+				var existingG = parseInt(stations[i][4].substr(3,2),16);
+				var existingB = parseInt(stations[i][4].substr(5,2),16);
+				
+				// if the values are within 5% of each other
+				if (Math.abs(rColor-existingR) < uniqueness && Math.abs(gColor-existingG) < uniqueness && Math.abs(bColor-existingB) < uniqueness) {
+					return 0
+				}
+			}
+		}
+		return 1
+	}
+	
+	function GenColor(stations) {
 		function colorcode() { return Math.floor(Math.random()*256); }
 		function hexus(num) { return num < 16 ? "0" + num.toString(16) : num.toString(16) }
 		var rColor=0;
@@ -36,6 +53,10 @@
 			rColor=colorcode();
 			gColor=colorcode();
 			bColor=colorcode();
+			
+			if (VerifyUniqColor(stations, rColor,gColor,bColor) == 0) {
+				rColor=0; gColor=0; bColor=0;
+			}
 		}
 		return "#" + hexus(rColor) + hexus(gColor) + hexus(bColor);
 	}
@@ -138,6 +159,10 @@
 			var channel_center = GetChannelCenter(stchannel);
 			var leadingNoise = GetNoiseFloorCoord( channel_center-(chanSpread*0.6) );
 			var trailingNoise = GetNoiseFloorCoord( channel_center+(chanSpread*0.6) );
+			
+			//flatline leading part of signal that is at or under the noisefloor; for stations that
+			//have disappeared from the current survey, but are tracked for x minutes & the noise floor rose
+			if (signal_height > leadingNoise) { leadingNoise = signal_height; }
 						
 			var spath="";
 			if (GetChannelInfo(stations[i][1],1) == "+") {
@@ -147,15 +172,15 @@
 			} else if (GetChannelInfo(stations[i][1],1) == "-") {
 				chanSpreadW = chanWidth * 6.75;
 				leadingNoise = GetNoiseFloorCoord(channel_center-(chanSpread*0.6)-(chanSpreadW-chanSpread));
+				if (signal_height > leadingNoise) { leadingNoise = signal_height; }
 				spath+="M"+(channel_center-(chanSpread*0.6)-(chanSpreadW-chanSpread)) +","+leadingNoise;
 			} else {
 				chanSpreadW=0;
 				spath+="M"+(channel_center-(chanSpread*0.6)) +","+leadingNoise;
 			}
 			
-			//flatline leading/trailing part of signal that is at or under the noisefloor; for stations that
+			//flatline trailing part of signal that is at or under the noisefloor; for stations that
 			//have disappeared from the current survey, but are tracked for x minutes & the noise floor rose
-			if (signal_height > leadingNoise) { leadingNoise = signal_height; }
 			if (signal_height > trailingNoise) { trailingNoise = signal_height; }
 			
 			if (GetChannelInfo(stations[i][1],1) == "b") { //802.11b has a different signal shape
@@ -180,7 +205,7 @@
 							+","+(chanWidth*0.33)+","+Math.abs(signal_height-trailingNoise) /* endpoint */
 							+" ";
 			}
-			var scolor=GenColor();
+			var scolor=GenColor(stations);
 			
 			var stpath = GeneratePathElement(5, scolor, "transparent", 1.0, spath);
 			stpath.id="StationPath_"+i;

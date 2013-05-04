@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=plugin_gargoyle_wifi_survey
-PKG_VERSION:=1.2.1
+PKG_VERSION:=1.2.2
 PKG_RELEASE:=1
 
 
@@ -55,7 +55,7 @@ fi
 grep -v -e "plugin-gargoyle-wifi-survey/OUIs.js" /etc/rc.local > /tmp/rc.local
 mv /tmp/rc.local /etc/rc.local
 
-#its jacked up, but delete OUIs.js from each mounted partition
+#its jacked up, but delete OUIs.js or OUIs.js.gz from each mounted partition
 mnt=1
 while true; do
   if [ -e /tmp/mounted_usb_storage.tab ] ; then
@@ -63,15 +63,11 @@ while true; do
     if [ -z $$apart ] ; then
       break
     fi
-    if [ -e $$apart/OUIs.js ] ; then
-      rm -f $$apart/OUIs.js
-    fi
+    rm -f $$apart/OUIs.js
     let mnt++
   fi
 done
-if [ -e /tmp/OUIs.js ] ; then
-  rm -f /tmp/OUIs.js
-fi
+rm -f /tmp/OUIs.js
 endef
 
 define Package/plugin-gargoyle-wifi-survey/install

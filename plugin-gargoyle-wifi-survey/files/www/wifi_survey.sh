@@ -60,8 +60,10 @@
 ?>
 
 var station_data = new Array();
-for (sd in sdata) {
-	station_data.push(sdata[sd]);
+if (sdata.length > 0) {
+	for (sd in sdata) {
+		station_data.push(sdata[sd]);
+	}
 }
 
 //-->
