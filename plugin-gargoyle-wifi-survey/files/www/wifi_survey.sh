@@ -45,14 +45,26 @@
 	if [ -e "$smb_share"/OUIs.js ] ; then
 		OUI_cat="cat $smb_share/OUIs.js"
 		oui_src="USB"
+	elif [ -e "$smb_share"/OUIs.js.gz ] ; then
+		OUI_cat="zcat $smb_share/OUIs.js.gz"
+		oui_src="USB"
 	elif [ -e "$nfs_share"/OUIs.js ] ; then
 		OUI_cat="cat $nfs_share/OUIs.js"
+		oui_src="USB"
+	elif [ -e "$nfs_share"/OUIs.js.gz ] ; then
+		OUI_cat="zcat $nfs_share/OUIs.js.gz"
 		oui_src="USB"
 	elif [ -e "$ftp_share"/OUIs.js ] ; then
 		OUI_cat="cat $ftp_share/OUIs.js"
 		oui_src="USB"
+	elif [ -e "$ftp_share"/OUIs.js.gz ] ; then
+		OUI_cat="zcat $ftp_share/OUIs.js.gz"
+		oui_src="USB"
 	elif [ -e /tmp/OUIs.js ] ; then
 		OUI_cat="cat /tmp/OUIs.js"
+		oui_src="RAM"
+	elif [ -e /tmp/OUIs.js.gz ] ; then
+		OUI_cat="zcat /tmp/OUIs.js.gz"
 		oui_src="RAM"
 	fi
 	echo "var oui_src=\"$oui_src\";"

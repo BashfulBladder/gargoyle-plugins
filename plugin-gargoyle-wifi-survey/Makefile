@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=plugin_gargoyle_wifi_survey
 PKG_VERSION:=1.2.2
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
@@ -63,11 +63,13 @@ while true; do
     if [ -z $$apart ] ; then
       break
     fi
-    rm -f $$apart/OUIs.js
+    rm -f $$apart/OUIs.js*
     let mnt++
+  else
+    break;
   fi
 done
-rm -f /tmp/OUIs.js
+rm -f /tmp/OUIs.js*
 endef
 
 define Package/plugin-gargoyle-wifi-survey/install

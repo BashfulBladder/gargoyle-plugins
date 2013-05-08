@@ -400,28 +400,28 @@ function DoVendorFile(button_name) {
 	var commands = [];
 	if (button_name == "remove") {
 		setControlsEnabled(false, true, "Purging vendors file");
-		commands.push("rm -rf /tmp/OUIs.js");
+		commands.push("rm -f /tmp/OUIs.js*");
 		if (sharepoint.match(/\/tmp\/usb_mount/)) {
-			commands.push("rm -rf " + sharepoint + "/OUIs.js");
+			commands.push("rm -f " + sharepoint + "/OUIs.js*");
 		}
 		commands.push("grep -v -e 'plugin-gargoyle-wifi-survey/OUIs.js' /etc/rc.local > /tmp/rc.local");
 		commands.push("mv /tmp/rc.local /etc/rc.local");
 	} else {
 		setControlsEnabled(false, true, "Downloading vendors file");
 		commands.push("ewget https://raw.github.com/BashfulBladder/gargoyle-plugins/master/plugin-gargoyle-wifi-survey/OUIs.js -O " + 
-						(button_name.split("+")[0] == "usb" ? sharepoint : "/tmp") + "/OUIs.js");
+						(button_name.split("+")[0] == "usb" ? sharepoint : "/tmp") + "/OUIs.js && gzip -9 "+ (button_name.split("+")[0] == "usb" ? sharepoint : "/tmp")+"/OUIs.js");
 		if (button_name.split("+").length > 1) {
 			if (button_name == "usb+rc.local") {
-				commands.push("ouiLine=\"if [ ! -e " + sharepoint + "/OUIs.js ] ; then ewget https://raw.github.com/BashfulBladder/gargoyle-plugins/master/plugin-gargoyle-wifi-survey/OUIs.js -O " + sharepoint + "/OUIs.js ; fi\"");
+				commands.push("ouiLine=\"if [ ! -e " + sharepoint + "/OUIs.js ] || [ ! -e " + sharepoint + "/OUIs.js.gz ]; then ewget https://raw.github.com/BashfulBladder/gargoyle-plugins/master/plugin-gargoyle-wifi-survey/OUIs.js -O " + sharepoint + "/OUIs.js && gzip -9 "+   sharepoint + "/OUIs.js ; fi\"");
 			} else {
-				commands.push("ouiLine=\"ewget https://raw.github.com/BashfulBladder/gargoyle-plugins/master/plugin-gargoyle-wifi-survey/OUIs.js -O /tmp/OUIs.js\"");
+				commands.push("ouiLine=\"ewget https://raw.github.com/BashfulBladder/gargoyle-plugins/master/plugin-gargoyle-wifi-survey/OUIs.js -O /tmp/OUIs.js && gzip -9 /tmp/OUIs.js\"");
 			}
 			commands.push("grep -v -e 'plugin-gargoyle-wifi-survey/OUIs.js' /etc/rc.local | awk -v oui=\"$ouiLine\" '/^exit 0/{print oui}1' > /tmp/rc.local");
 			commands.push("mv /tmp/rc.local /etc/rc.local");
 		}
 	}
 	var param = getParameterDefinition("commands", commands.join("\n")) + "&" + getParameterDefinition("hash", document.cookie.replace(/^.*hash=/,"").replace(/[\t ;]+.*$/, ""));
-	
+
 	var stateChangeFunction = function(req) {
 		if (req.readyState == 4) {
 			if (button_name == "remove") { setTimeout(setControlsEnabled(true), 2*1000); }

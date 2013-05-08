@@ -1,6 +1,6 @@
 #!/bin/sh
 
-#version 21 © 2013 BashfulBladder as part of plugin-gargoyle-wifi-survey for Gargoyle router firmware
+#version 22 © 2013 BashfulBladder as part of plugin-gargoyle-wifi-survey for Gargoyle router firmware
 
 newSurvey=/tmp/tmp_survey.txt
 oldSurvey=/tmp/survey_data.txt
@@ -27,7 +27,7 @@ ScanNscrap_iw() {
   if [ -e "$sta_dir"/station_iw1 ] ; then
 	for station in `ls $sta_dir`
 	do
-		Mode=""; Privacy=""; sRate=""; eRate=""; HTmode=""; MCSrates=""; streams=""; channeloffset=""; channelwidth="";
+		Mode=""; Privacy=""; sRate=""; eRate=""; HTmode=""; MCSrates=""; streams=1; channeloffset=""; channelwidth="";
 		WPA=""; Gcipher1=""; Pcipher1=""; AuthSuites1="";    WPA2=""; Gcipher2=""; Pcipher2=""; AuthSuites2="";
   
 		shvars=`awk '/^BSS/ {print "MAC="$2} /\tfreq:/ {split($2,c,""); print "Freq="c[1]"."c[2]c[3]c[4]} /\tsignal:/ {printf "Level=%i\n", $2} /\tcapability:/ {for(i=2;i<=NF;++i) if($i=="IBSS") print "Mode=\"Ad Hoc\""; else if ($i=="ESS") print "Mode=Station"; else if ($i=="Privacy") print "Privacy=on"} /\tSSID:/ {printf "SSID=\""; for(i=2;i<=NF;++i) printf("%s%s", $i, i==NF?"\"\n":" ") } /\tSupported rates:/ {printf "sRate=%i\n", $NF} /\tDS Parameter set:/ {print "Channel="$NF} /\tExtended supported rates:/ {printf "eRate=%i\n", $NF} /\tHT capabilities:/,/DSSS/ {for(i=2;i<=NF;++i) if ($i == "HT40") print "HTmode="$i } /rate indexes supported:/ {print "rates="$NF} /spatial streams:/ {print "streams="$NF} /secondary channel offset:/ {print "channeloffset="$NF} /channel width:/ {print "channelwidth="$5} /\tWPA:/,/Authentication suites:/ {for(i=2;i<=NF;++i) if ($i == "Version:") print "WPA=WPA"$i+1 ; else if ($i == "Group") print "Gcipher1="$(i+2); else if ($i == "Pairwise") {printf "Pcipher1="; for(j=4;j<=NF;j++) printf("%s%s", $j, j==NF?"\n":",")} else if ($i == "Authentication") {print "AuthSuites1="$NF}} /\tRSN:/,/Capabilities:/ {for(i=2;i<=NF;++i) if ($i == "Version:") print "WPA2=WPA2v"$i+1 ; else if ($i == "Group") print "Gcipher2="$(i+2); else if ($i == "Pairwise") {printf "Pcipher2="; for(j=4;j<=NF;j++) printf("%s%s", $j, j==NF?"\n":",")} else if ($i == "Authentication") {print "AuthSuites2="$NF}}' "$sta_dir"/$station`

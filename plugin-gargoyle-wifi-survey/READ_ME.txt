@@ -53,4 +53,6 @@ v1.2.1	OUIs.js: fix missing spaces (thanks Cezary)
 v1.2.2	survey.sh: yet another 45 day bugfix; fully transition to either iw OR iwlist scans;
 		SVG chart: try to ensure 2 random colors are at 5-12% apart
 		webpage: UI bugfixes with no wifi & no existing survey data; fix "File is xxxk" (endlessly) added with any keypress
+	r2	makefile: bugfix for removal on routers without USB devices; modded&added Cezary patch for gzipped compressed OUIs.js
+		survey.sh: fixed Nspeed*streams printing out as integer (report from user mikhnal)
 */
