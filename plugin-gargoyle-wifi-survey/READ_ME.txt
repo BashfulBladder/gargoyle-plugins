@@ -55,4 +55,5 @@ v1.2.2	survey.sh: yet another 45 day bugfix; fully transition to either iw OR iw
 		webpage: UI bugfixes with no wifi & no existing survey data; fix "File is xxxk" (endlessly) added with any keypress
 	r2	makefile: bugfix for removal on routers without USB devices; modded&added Cezary patch for gzipped compressed OUIs.js
 		survey.sh: fixed Nspeed*streams printing out as integer (report from user mikhnal)
+	r3	js: move AssembleNoiseFloor to run after wifi is up & chfrq is present; fix endless appending "Updating" when wifi is down
 */

@@ -282,16 +282,18 @@ function UpdateSurvey() {
 			eval(shell_output);
 			curr_sta=0;
 			ShowAdvisory(wifs);
-			AssembleNoiseFloor(chdata, frqdata);
 			FillTable(sdata, curr_time);
 			setControlsEnabled(true);
 			
 			if (wifs.length > 0) {
+				AssembleNoiseFloor(chdata, frqdata);
 				var chutilField = document.getElementById("chutil");
 				chutilField.style.display = "block";
 				AssembleBandLimitedNoiseFloor(nfloor);
 				AssemblePlotStationData(sdata, curr_time);
 				chart();
+			} else {
+				document.getElementById("note_txt").innerHTML="No stations were found <br/>\n";
 			}
 		}
 	}
@@ -463,7 +465,7 @@ function AssemblePlotStationData(stadata, currTime) {
 function AssembleBandLimitedNoiseFloor(fullnoisefloor) {
 	band2p4noise = new Array();
 	for (var i=0; i < fullnoisefloor.length; i++) {
-		if (fullnoisefloor[i][0] <= 14) {
+		if (fullnoisefloor[i][0] < 14) {
 			band2p4noise.push(fullnoisefloor[i]);
 		} else {
 			break;
