@@ -255,6 +255,12 @@ function FillTable(new_shell_vars, now_time) {
 	
 	var sTable = createTable([""], tableData, "station_table", false, false);
 	var stableC = document.getElementById('station_table_container');
+	if (stations.length < 7) {
+		stableC.style.height="auto";
+	} else {
+		stableC.style.height="600px";
+	}
+	stableC.style.overflow="auto";
 	setSingleChild(stableC, sTable);
 	
 	WarnOUIs(stations);
@@ -290,15 +296,7 @@ function UpdateSurvey() {
 			
 			FiveGHzBand=0; TwoP4GHzBand=0;
 			if (wifs.length > 0) {
-				
 				AssembleNoiseFloor(chdata, frqdata);
-				
-				
-				//if (FiveGHzBand==1) {
-				///	document.getElementById('band50').style.display = 'block';
-				//} else {
-				//	document.getElementById('band50').style.display = 'none';
-				//}
 				AssembleBandLimitedNoiseFloor(nfloor);
 				AssemblePlotStationData(sdata, curr_time);
 				if (TwoP4GHzBand == 1) {
@@ -314,6 +312,8 @@ function UpdateSurvey() {
 			} else {
 				document.getElementById("note_txt").innerHTML="No stations were found <br/>\n";
 				document.getElementById('chutil').style.display = 'none';
+				
+				document.getElementById('station_table_container').style.height="auto";
 			}
 		}
 	}

@@ -38,7 +38,8 @@ SVG charts: colors jump around every 2 minutes when data is reloaded; maybe find
   The chart only displays data when current wireless data is fetched from the router. Stale data 6 hours old has little value in setting
   up your current channels.
   
-  These SVG charts are intended to be representational - very few pieces of data are involved in crating the signal shapes: the channel, the surrounding noise floor & the name.
+  These SVG charts are intended to be representational - very few pieces of data are involved in creating the waveforms: the channel,
+  the surrounding noise floor & the name.
 
 */
 
@@ -62,4 +63,5 @@ v1.2.2	survey.sh: yet another 45 day bugfix; fully transition to either iw OR iw
 		survey.sh: fixed Nspeed*streams printing out as integer (report from user mikhnal)
 	r3	(bugreports) js: move AssembleNoiseFloor after wifi is up & chfrq is present; fix endless appending "Updating" when wifi is down
 v1.2.3	initial charting for 5GHz band; split javascript from SVG charts (allow uglifyjs file.js > file2.js minification)
+	r2	js: limit table height to 600px & slap on a scroll bar for overflow when wifi is up; fix erroneous '2.4GHz channels.svg'
 */

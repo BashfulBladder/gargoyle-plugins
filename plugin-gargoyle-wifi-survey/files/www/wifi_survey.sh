@@ -102,7 +102,7 @@ if (sdata.length > 0) {
 		<span id='tracking' style="float: right; cursor: pointer" onmouseover="ShowCurrentInfo(this)"></span>
 	</div>	
 	<div>
-		<div id="station_table_container"</div>
+		<div id="station_table_container" />
 	</div>
 
 	<div id="notes">
