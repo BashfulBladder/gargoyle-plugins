@@ -1,0 +1,29 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1">
+
+<script xlink:href="js/5GHz channels.js"/>
+
+<style type="text/css" ><![CDATA[
+	
+.graph { background-color: #000000; background:#444444; font-size: 14px; height: 50%; margin-bottom: 16px; width: 100%; fill: #000000; }
+.graph svg { overflow: visible; }
+.band { font-size: 225px; color:#555555; opacity: 0.1;}
+text { fill: #fff; }
+
+]]></style>
+    
+<svg class="graph">
+	<defs>
+    	<filter id="blur1" x="0" y="0">
+      		<feGaussianBlur stdDeviation="2" />
+    	</filter>
+	</defs>
+	<text x="75" y="3" dy=".71em" class="band" text-anchor="left">5GHz</text>
+	<svg viewBox="0 0 1000 1000" preserveAspectRatio="none">
+		<g id="chartarea" transform="translate(50,0)"></g>
+		<text y="977" x="755" dy=".71em" style="font-size:14; fill:#999999" text-anchor="left">stations seen in the last 15 minutes</text>
+	</svg>
+</svg>
+
+</svg>

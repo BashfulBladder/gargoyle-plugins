@@ -1,6 +1,9 @@
 /*
 TODO:
-SVG charts: 5GHz (channel gaps make a non-continuous graph through available channels)
+SVG charts: there is a bug in the 5GHz SVG chart. If both bands chart, then /sbin/wifi down radio1 (so 5GHz chart disappears),
+			/sbin/wifi up radio1 will bring up the radio, the chart will go through the motions, but nothing displays. Not even
+			a lone text element appended onto the intial svgChart will display.
+
 
 SVG charts: I think broadcom platform is going to have an issue: iw doesn't come installed by default; iw is required for noise floor (although there may be another avenue, I dun't know), without a noise floor, broadcom charting will default to a noise floor of -120 dBm.
 
@@ -34,6 +37,8 @@ SVG charts: colors jump around every 2 minutes when data is reloaded; maybe find
   
   The chart only displays data when current wireless data is fetched from the router. Stale data 6 hours old has little value in setting
   up your current channels.
+  
+  These SVG charts are intended to be representational - very few pieces of data are involved in crating the signal shapes: the channel, the surrounding noise floor & the name.
 
 */
 
@@ -55,5 +60,6 @@ v1.2.2	survey.sh: yet another 45 day bugfix; fully transition to either iw OR iw
 		webpage: UI bugfixes with no wifi & no existing survey data; fix "File is xxxk" (endlessly) added with any keypress
 	r2	makefile: bugfix for removal on routers without USB devices; modded&added Cezary patch for gzipped compressed OUIs.js
 		survey.sh: fixed Nspeed*streams printing out as integer (report from user mikhnal)
-	r3	js: move AssembleNoiseFloor to run after wifi is up & chfrq is present; fix endless appending "Updating" when wifi is down
+	r3	(bugreports) js: move AssembleNoiseFloor after wifi is up & chfrq is present; fix endless appending "Updating" when wifi is down
+v1.2.3	initial charting for 5GHz band; split javascript from SVG charts (allow uglifyjs file.js > file2.js minification)
 */

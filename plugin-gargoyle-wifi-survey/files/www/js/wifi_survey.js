@@ -12,6 +12,7 @@ var nfloor=new Array(); // [channel# (136), frequency in MHz (5700), noise floor
 var curr_sta = 0;
 
 var band2p4noise = null;
+var band5p0noise = null;
 var plotStationData = null;
 
 window.onkeyup = KeyCaptureU;
@@ -19,7 +20,9 @@ window.onkeydown = KeyCaptureD;
 
 var updateTotalPlot = null;
 var Band2p4ChartPlot = null;
-var iter = 0;
+var Band5p0ChartPlot = null;
+var FiveGHzBand = 0;
+var TwoP4GHzBand = 1;
 
 function MatchOUI(mac) {
 	var devOUI = mac.substr(0,2) + mac.substr(3,2) + mac.substr(6,2);
@@ -285,15 +288,32 @@ function UpdateSurvey() {
 			FillTable(sdata, curr_time);
 			setControlsEnabled(true);
 			
+			FiveGHzBand=0; TwoP4GHzBand=0;
 			if (wifs.length > 0) {
+				
 				AssembleNoiseFloor(chdata, frqdata);
-				var chutilField = document.getElementById("chutil");
-				chutilField.style.display = "block";
+				
+				
+				//if (FiveGHzBand==1) {
+				///	document.getElementById('band50').style.display = 'block';
+				//} else {
+				//	document.getElementById('band50').style.display = 'none';
+				//}
 				AssembleBandLimitedNoiseFloor(nfloor);
 				AssemblePlotStationData(sdata, curr_time);
-				chart();
+				if (TwoP4GHzBand == 1) {
+					document.getElementById('chutil').style.display = 'block';
+					chart24();
+				}
+				if (FiveGHzBand==1) {
+					document.getElementById('band50').style.display = 'block';
+					chart50();
+				} else {
+					document.getElementById('band50').style.display = 'none';
+				}
 			} else {
 				document.getElementById("note_txt").innerHTML="No stations were found <br/>\n";
+				document.getElementById('chutil').style.display = 'none';
 			}
 		}
 	}
@@ -436,6 +456,8 @@ function DoVendorFile(button_name) {
 function AssembleNoiseFloor(chdata, frqdata) {
 	nfloor.length=0;
 	for (var i=0; i < chdata.length; i++) {
+		if (chdata[i][0] > 30) { FiveGHzBand = 1; }
+		if (chdata[i][0] < 14) { TwoP4GHzBand = 1; }
 		for (var j=0; j < frqdata.length; j++) {
 			if (chdata[i][1] == frqdata[j][0]) {
 				nfloor.push([chdata[i][0],chdata[i][1],frqdata[j][1]]);
@@ -464,9 +486,14 @@ function AssemblePlotStationData(stadata, currTime) {
 
 function AssembleBandLimitedNoiseFloor(fullnoisefloor) {
 	band2p4noise = new Array();
+	if (FiveGHzBand == 1) { band5p0noise = new Array(); }
 	for (var i=0; i < fullnoisefloor.length; i++) {
 		if (fullnoisefloor[i][0] < 14) {
 			band2p4noise.push(fullnoisefloor[i]);
+		} else if (FiveGHzBand == 1) {
+			if (fullnoisefloor[i][0] > 30) {
+				band5p0noise.push(fullnoisefloor[i]);
+			}
 		} else {
 			break;
 		}
@@ -476,17 +503,27 @@ function AssembleBandLimitedNoiseFloor(fullnoisefloor) {
 /*        Special thanks to Eric Bishop for figuring this out, because I sure as hell couldn't       */
 /*  This is (almost exactly) copied directly from bandwidth.js to load the SVG graph's plot function */
 
-function chart() {
-	if (Band2p4ChartPlot != null) {
-	
-	} else {
-		setTimeout(chart, 25); //try again in 25 milliseconds; Safari takes about 238 iterations to acquire the plot
+function chart24() {
+	if (Band2p4ChartPlot == null) {
+		setTimeout(chart24, 25); //try again in 25 milliseconds; Safari takes about 238 iterations to acquire the plot
 		if (Band2p4ChartPlot == null) {
 			Band2p4ChartPlot = getEmbeddedSvgPlotFunction2("band24");
 		}
 	}
 	if (Band2p4ChartPlot != null) {
 		Band2p4ChartPlot(band2p4noise,plotStationData);
+	}
+}
+
+function chart50() {
+	if (Band5p0ChartPlot == null) {
+		setTimeout(chart50, 25); //try again in 25 milliseconds; Safari takes about 238 iterations to acquire the plot
+		if (Band5p0ChartPlot == null) {
+			Band5p0ChartPlot = getEmbeddedSvgPlotFunction2("band50");
+		}
+	}
+	if (Band5p0ChartPlot != null) {
+		Band5p0ChartPlot(0,band5p0noise,plotStationData);
 	}
 }
 
