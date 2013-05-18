@@ -64,4 +64,5 @@ v1.2.2	survey.sh: yet another 45 day bugfix; fully transition to either iw OR iw
 	r3	(bugreports) js: move AssembleNoiseFloor after wifi is up & chfrq is present; fix endless appending "Updating" when wifi is down
 v1.2.3	initial charting for 5GHz band; split javascript from SVG charts (allow uglifyjs file.js > file2.js minification)
 	r2	js: limit table height to 600px & slap on a scroll bar for overflow when wifi is up; fix erroneous '2.4GHz channels.svg'
+v1.2.4	no new features or bugfixes; comments to javascript; refactored to reduce duplicative functions (signal charting.js); renamed files
 */

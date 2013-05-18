@@ -24,6 +24,12 @@ var Band5p0ChartPlot = null;
 var FiveGHzBand = 0;
 var TwoP4GHzBand = 1;
 
+//
+//  MatchOUI matches a devices first 3 octets of the MAC address with a vendor listing
+//    mac is the colon separated 6 octet address of the device (may be lowercase if iw was used)
+//  Tease out the octets from the colons for the first 3 octets, uppercase the hex & match 1-by-1 against the OUIs.js vendor listings
+//  Returns: a string - either "unknown" or the matching vendor
+//
 function MatchOUI(mac) {
 	var devOUI = mac.substr(0,2) + mac.substr(3,2) + mac.substr(6,2);
 	for (var i=0; i < vdr.length; i++) { 
@@ -32,6 +38,9 @@ function MatchOUI(mac) {
 	return "unknown"
 }
 
+//
+//  CleanTable will delete the rows in the given table
+//
 function CleanTable(table) {
 	if (table == null) { return; }
 	if (table.rows.length == 1) { return; }
@@ -41,6 +50,12 @@ function CleanTable(table) {
 	}
 }
 
+//
+//  NewTextDiv generates a stack of text from strArray with linebreaks
+//    strArray contains the text that will be added
+//    col is the identifier for the element
+//  Returns: an html div element with text content already incorporated that needs appending to the HTML DOM
+//
 function NewTextDiv(strArray, col) {
 	var a_div=document.createElement('div')
 	a_div.style.width='auto';
@@ -52,6 +67,10 @@ function NewTextDiv(strArray, col) {
 	return a_div;
 }
 
+//
+//  SNRDiv creates an HTML div with a span element of the iw SNR graphical display, plus text underneath
+//  Returns: an html div element with the span & text elements incorporated that needs appending to the HTML DOM
+//
 function SNRDiv(freq, strength, noise_floor, width, row) {
 	var floor=-120;
 	if (noise_floor < 0) {
@@ -100,6 +119,10 @@ function SNRDiv(freq, strength, noise_floor, width, row) {
 	return a_div;
 }
 
+//
+//  SignalDiv creates an HTML div with a span element of the iwlist quality graphical display, plus text underneath
+//  Returns: an html div element with the span & text elements incorporated that needs appending to the HTML DOM
+//
 function SignalDiv(qual, strength, width, row) {
 	var a_tag = document.createElement('a');
 	if (row%2 == 1) {
@@ -131,6 +154,11 @@ function SignalDiv(qual, strength, width, row) {
 	return a_div;
 }
 
+//
+//  strtotime takes a formatted (by survey.sh) timestamp & parses out the components into a date&time
+//    ats is the formatted timestamp (example: 201305130944)
+//  Returns: a javascript data variable (millisecond time) that can be subtracted easily to determine the passage of time 
+//
 function strtotime(ats) {
 	var adate = new Date();
 	adate.setFullYear(ats.substr(0, 4));
@@ -141,6 +169,10 @@ function strtotime(ats) {
 	return adate;
 }
 
+//
+//  milliToDHM converts javascript millisecond time to relative time in ever increasing units
+//  Returns: a string representing elapsed relative time
+//
 function milliToDHM(msec) {
 	var mdays = 86400000; //24*60*60*1000
 	var mhrs = 3600000; //60*60*1000
@@ -152,12 +184,22 @@ function milliToDHM(msec) {
 	return (d > 0 ? d + "d " : "") + (h > 0 ? h + "h " : "") + (m > 0 ? m + "m " : "") + "ago";
 }
 
+//
+//  LastSeen subtracts timestamps after conversion & tracks how many stations have been seen in the last 10 minutes (600,000 miliseconds)
+//  Returns: a string for the station table of how long ago a station has been scanned
+//
 function LastSeen(time_now, atimestamp) {
 	var diff = Math.abs( strtotime(time_now) - strtotime(atimestamp) );
 	if (diff < 600000) { curr_sta++; }
 	return ( diff < 90000 ? "last seen now" : milliToDHM(diff) );
 }
 
+//
+//  Speed evaluates the (not always increasing) speeds reported by survey.sh
+//    sparr - the array of speeds reported (example: [54,48,150,450]
+//  loop through the elements looking for the top speed to report
+//  Returns: a string representing 802.11 speeds for the station table
+//
 function Speed(sparr) {
 	var speed = 0;
 	for (var i = 0; i < sparr.length; i++) {
@@ -170,6 +212,11 @@ function Speed(sparr) {
 	return ("802.11n" + " N" + speed);
 }
 
+//
+//  Crypt examines the encryption settings for a station provided by survey.sh
+//    pass - the password setting; karr is the encryption array (example: ["WPA2v1","CCMP","PSK"]
+//  Returns: a string representing a station's encryption setting for the station table
+//
 function Crypt(pass, karr) {
 	if (pass.match("off")) { return "none"; }
 	if (pass.match("on")) {
@@ -189,6 +236,11 @@ function Crypt(pass, karr) {
 	return "unknown";
 }
 
+//
+//  ShowTracking sets the text at the upper right of the table to the number of stations seen in the last 45 days by survey.sh
+//    num_sta - the actual number of stations
+//  tries to align the data with the end of the table
+//
 function ShowTracking(num_sta) {
 	if (document.getElementById('station_table') == null) { return; }
 	if (document.getElementById('station_table').rows.length <= 1) { return }
@@ -202,6 +254,11 @@ function ShowTracking(num_sta) {
 	tspan.style.width = fwidth - twidth + tspan.offsetWidth + "px";
 }
 
+//
+//  ShowCurrentInfo sets the text at the upper right of the table to the number of stations seen in the last 10minutes when hovered over
+//    tspan - the element hovered over
+//  stores the old text & width to restore when the mouse moves away from the text
+//
 function ShowCurrentInfo(tspan) {
 	if (document.getElementById('station_table') == null) { return; }
 	var fwidth = document.getElementById('wifi_survey').offsetWidth;
@@ -223,6 +280,13 @@ function ShowAdvisory(wifi_interfaces) {
 	}
 }
 
+//
+//  FillTable is where most the the table action occurs
+//    new_shell_vars are the sdata array provided by survey.sh (only defined after a scan, not the initial page view)
+//    now_time is the current time on the router (only defined after a scan, not the initial page view)
+//  Clear the table before filling it up. Loop through each station & generate 4 columns of data & append onto the array of table data
+//  Create the table element & append a (vertically limited) table to the div container element
+//
 function FillTable(new_shell_vars, now_time) {
 	var nTime=(now_time == null ? curr_time : now_time);
 	var stations = (new_shell_vars == null ? station_data : new_shell_vars);
@@ -244,7 +308,6 @@ function FillTable(new_shell_vars, now_time) {
 		var col1div=NewTextDiv([stations[i][7], stations[i][0], MatchOUI(stations[i][0])], i);
 		var col2div=NewTextDiv(["Ch " + stations[i][2] + " | " + stations[i][3] + "GHz", Speed(stations[i][8]), Crypt(stations[i][6], crypos)], i);
 		var col3div=NewTextDiv([stations[i][9], LastSeen(nTime, stations[i][1]) ], i);
-		//if (nfloor.length > 1) {
 		if (eval(stations[i][4]) < 0) {
 			var col4div=SNRDiv(stations[i][3], stations[i][5], stations[i][4], 100, i);
 		} else {
@@ -267,6 +330,10 @@ function FillTable(new_shell_vars, now_time) {
 	ShowTracking(stations.length);
 }
 
+//
+//  InitSurvey runs once when the page loads & creates the interval for running survey.sh scans: 2 minutes (120,000 milliseconds
+//  Create & fill the table with old/stale survey.sh data from the last run - best to see old output while waiting for new data
+//
 function InitSurvey() {
 	WarnOUIs(sdata);
 	UpdateSurvey();
@@ -275,6 +342,12 @@ function InitSurvey() {
 	FillTable(null);
 }
 
+//
+//  UpdateSurvey sends commands to the router & retrieves data for display in both table & charts
+//  Sets up the callback to the shell commands (gets wifi status, router current time & runs survey.sh which gets station data, channels
+//  and noise floor. Parse those variables from the results & send them off to enter the table & whittle down for charting 2.4/5GHz bands
+//  Note: the iw/iwlist commands take some time to run so control is restored back to the browser before data arrives from the router
+//
 function UpdateSurvey() {
 	var commands = [];
 	document.getElementById("note_txt").innerHTML+="<br/>\nUpdating... <br/>\n";
@@ -320,7 +393,11 @@ function UpdateSurvey() {
 	runAjax("POST", "utility/run_commands.sh", param, stateChangeFunction);
 }
 
-//   OUIs support functions
+//
+//  WarnOUIs both informs the user of whether OUIs.js was found, but also dynamically changes the action of the button + descriptive text
+//  shell variables from the router are used to inform the user of where the OUIs.js was found & how a restart affects the file
+//  Sets up the button to delete the OUIs.js if present, or download to RAM (or USB if cabability is present via shell vars on the router)
+//
 function WarnOUIs(stations) {
 	if (vdr.length == 0 && stations.length > 0) {
 		document.getElementById("oui_txt").innerHTML="IEEE OUIs were not found. Vendor lookup is disabled.";
@@ -349,6 +426,10 @@ function WarnOUIs(stations) {
 	}
 }
 
+//
+//  Fill_OUI_Info takes the button name (identifier handed by the button so no getElementById) set in KeyCaptureX functions
+//  and provides descriptive text regarding its function
+//
 function Fill_OUI_Info(button_name) {
 	var OUIsize = "803kb";
 	var oui_info = document.getElementById("oui_info");
@@ -373,6 +454,9 @@ function Fill_OUI_Info(button_name) {
 	}
 }
 
+//
+//  KeyCaptureD is the key down event - only shift & alt are listed to here where the button name is changed & shipped off
+//
 function KeyCaptureD(keyEvent) {
 	if (wgetOUI.length > 0 || oui_src.length > 0) { return }
 	var oui_button = document.getElementById("OUIs_button");
@@ -392,6 +476,9 @@ function KeyCaptureD(keyEvent) {
 	}
 }
 
+//
+//  KeyCaptureU is the key up event - only shift & alt are listed to here where the button name is changed & shipped off
+//
 function KeyCaptureU(keyEvent) {
 	if (wgetOUI.length > 0 || oui_src.length > 0) { return }
 	var oui_button = document.getElementById("OUIs_button");
@@ -418,6 +505,14 @@ function KeyCaptureU(keyEvent) {
 	}
 }
 
+//
+//  DoVendorFile will carry out the action for the OUIs.js file (after holding down modifier keys to change the button's name)
+//    button_name is the identifier handed by the button so no getElementById
+//  based on the button's name, carry out the delete/download action on the router to the target device & add the optional
+//  rc.local startup script to re-download to the target when the router starts up. eweget is used because its a https link
+//  After downloading the file is gzipped in-situ on the router - ewget failed to properly download the already gzipped file
+//  Once the file has been downloaded, reload the page to add/remove vendor lookup on the table
+//
 function DoVendorFile(button_name) {
 	var commands = [];
 	if (button_name == "remove") {
@@ -453,6 +548,14 @@ function DoVendorFile(button_name) {
 	runAjax("POST", "utility/run_commands.sh", param, stateChangeFunction);
 }
 
+//
+//  AssembleNoiseFloor correlates frequencies, channels & noise floor values from the router
+//  survey.sh dumps a pre-formatted javascript array, but in a more raw form. I had trouble getting awk to use associative arrays
+//  across 2 variables (which would have come under awk's floating point math oddities), so it was just easier to generate the 
+//  array in the browser (where its needed) rather than on the router (where its harder). Based on the channels available, this
+//  determines whether the 2.4Ghz/5Ghz bands is/are available at the global scope.
+//  Finally, sort the data (looks like its sorted low-to-high on frequencies)
+//
 function AssembleNoiseFloor(chdata, frqdata) {
 	nfloor.length=0;
 	for (var i=0; i < chdata.length; i++) {
@@ -468,8 +571,18 @@ function AssembleNoiseFloor(chdata, frqdata) {
 	nfloor.sort(function(a, b) { return (a[1] < b[1] ? -1 : (a[1] > b[1] ? 1 : 0)); });
 }
 
+//
+//  AssemblePlotStationData reduces the station array to a) minimal data sets & b) stations seen in the last 15m (900,000 milisec)
+//    stadata is the full, unchanged sdata array from survey.sh
+//    currTime is the preformatted current time on the router
+//  The stations are gone through to see if they are fresher than 15 minutes. Data is reduced down to BSSID, channel, freq (I think
+//  this is actually unused) & signal level of station. Note: channel is an array of 2 members itself: the channel number & other
+//  info like a b signal or +/- wide channels. Sort them based on 3rd element - signal strength high-to-low so stations are plotted
+//  highest station in back & lower stations covering te lower portions (as opposed to random stations hidden by high-strengh ones)
+//  Note: plotStationData has the array form of [ ["BSSID", [1,"+"], 2417, -65], another...]
+//
 function AssemblePlotStationData(stadata, currTime) {
-	plotStationData = new Array(); //form is: [["BSSID", [1,"+"], 2417, -65], another...]
+	plotStationData = new Array();
 	var time_diff = 0;
 	for (var i=0; i < stadata.length; i++) {
 		time_diff = Math.abs( strtotime(currTime) - strtotime(stadata[i][1]) );
@@ -481,9 +594,12 @@ function AssemblePlotStationData(stadata, currTime) {
 			plotStationData.push([stadata[i][7],[parseInt(stadata[i][2]),suppl],stadata[i][3]*1000,stadata[i][5]]);
 		}
 	}
-	plotStationData.sort(function(a, b) { return (a[3] < b[3] ? -1 : (a[3] > b[3] ? 1 : 0)); }); //sort by highest signal first
+	plotStationData.sort(function(a, b) { return (a[3] < b[3] ? -1 : (a[3] > b[3] ? 1 : 0)); });
 }
 
+//
+//  AssembleBandLimitedNoiseFloor reduces the noise floor to band-only (2.4GHz/5Ghz) noise floor values for charting
+//
 function AssembleBandLimitedNoiseFloor(fullnoisefloor) {
 	band2p4noise = new Array();
 	if (FiveGHzBand == 1) { band5p0noise = new Array(); }
