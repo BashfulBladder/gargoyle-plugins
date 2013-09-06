@@ -131,9 +131,9 @@ if (sdata.length > 0) {
 <fieldset id="chutil" style="display:none;">
 	<legend class="sectionheader">Channel Utilization</legend>
 	
-	<object id="band24" data="ws 2.4GHz channels.svg" type="image/svg+xml" style="margin: 5px; float:left; width:700px; height:700px; background: #272727"></object>
+	<object id="band24" data="ws_2.4GHz_channels.svg" type="image/svg+xml" style="margin: 5px; float:left; width:700px; height:700px; background: #272727"></object>
 	<br />
-	<object id="band50" data="ws 5GHz channels.svg" type="image/svg+xml" style="margin: 5px; float:left; width:700px; height:700px; background: #272727; display: none;"></object>
+	<object id="band50" data="ws_5GHz_channels.svg" type="image/svg+xml" style="margin: 5px; float:left; width:700px; height:700px; background: #272727; display: none;"></object>
 	
 </fieldset>
 
